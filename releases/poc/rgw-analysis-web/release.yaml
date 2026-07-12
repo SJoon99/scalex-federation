@@ -4,6 +4,6 @@ namespace: scalex-rgw-analysis-web
 chart:
   repoURL: https://github.com/SJoon99/scalex-feature-poc.git
   path: chart
-  revision: b29d22ef7cb91daa6286ba91eb9b6986c1ec505d
+  revision: 63982d9a35cab7199f0fd461c4ed2bb85af4a3e0
 valuesFile: releases/poc/rgw-analysis-web/values.yaml
 policyPath: releases/poc/rgw-analysis-web/karmada
