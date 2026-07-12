@@ -18,4 +18,4 @@ spec:
         plaintext:
           - path: /data/S3_ENDPOINT_URL
             operator: replace
-            value: http://scalex-poc-rgw.csi-rook-ceph.svc.cluster.local
+            value: http://scalex-poc-rgw.csi-rook-ceph
