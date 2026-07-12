@@ -18,6 +18,8 @@ spec:
     - group: ""
       kind: ConfigMap
     - group: ""
+      kind: ServiceAccount
+    - group: ""
       kind: Service
     - group: apps
       kind: Deployment
