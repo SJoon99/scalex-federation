@@ -4,10 +4,15 @@ metadata:
   name: rgw-analysis-web-analyzer-to-c
   namespace: scalex-rgw-analysis-web
 spec:
+  conflictResolution: Abort
+  preemption: Never
+  priority: 0
+  schedulerName: default-scheduler
   resourceSelectors:
     - apiVersion: batch/v1
       kind: Job
       name: rgw-analysis-web-analyzer
+      namespace: scalex-rgw-analysis-web
   propagateDeps: true
   placement:
     clusterAffinity:

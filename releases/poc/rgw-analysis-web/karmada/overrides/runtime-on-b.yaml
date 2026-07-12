@@ -4,10 +4,12 @@ metadata:
   name: rgw-analysis-web-runtime-on-b
   namespace: scalex-rgw-analysis-web
 spec:
+  overriders: {}
   resourceSelectors:
     - apiVersion: v1
       kind: ConfigMap
       name: rgw-analysis-web-runtime
+      namespace: scalex-rgw-analysis-web
   overrideRules:
     - targetCluster:
         clusterNames:
