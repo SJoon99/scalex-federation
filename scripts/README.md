@@ -10,3 +10,8 @@
 - Smoke test 실행 보조
 
 스크립트는 Argo CD를 우회해 운영 cluster에 직접 배포하는 경로로 사용하지 않는다.
+
+- `validate.sh`: bootstrap, release, Helm/Kustomize와 policy selector 검증
+- `bootstrap-rgw-credentials.sh`: Git에 저장할 수 없는 B OBC credential을
+  Karmada API Secret으로 한 번 주입하는 POC bootstrap 예외. Workload 배포는
+  계속 Argo/Karmada가 담당한다.

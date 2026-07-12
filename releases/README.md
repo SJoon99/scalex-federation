@@ -20,6 +20,19 @@
 releases/
 └─ <environment>/
    └─ <release-name>/
+      ├─ release.yaml
       ├─ values.yaml
       └─ karmada/
+         ├─ kustomization.yaml
+         ├─ propagation/
+         └─ overrides/
 ```
+
+- `release.yaml`: ApplicationSet이 읽는 chart 좌표, immutable revision,
+  namespace와 policy 경로
+- `values.yaml`: image revision, endpoint, object path 등 runtime desired state
+- `propagation/`: component를 member cluster에 배치하는 정책
+- `overrides/`: Karmada가 소유하는 workload 복제본의 cluster별 차이
+
+실제 image/chart blob은 Registry에 두며 이 디렉터리에는 artifact 좌표만
+기록한다.

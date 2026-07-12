@@ -1,11 +1,11 @@
 # bootstrap
 
-Tower Argo CD가 `scalex-federation`의 release를 발견하고 동기화하기 위한 GitOps 진입점을 둔다.
+Tower Argo CD가 Federation release를 발견하는 고정 진입점이다.
 
-향후 포함할 수 있는 항목:
+- `appproject.yaml`: Federation source와 Karmada destination 경계
+- `applicationset.yaml`: `releases/*/*/release.yaml` 자동 발견
+- `kustomization.yaml`: Tower root Application이 동기화하는 경로
 
-- Federation 전용 `AppProject`
-- Karmada API를 destination으로 사용하는 Argo `Application`
-- 여러 release를 묶는 root Application 또는 ApplicationSet
-
-이 디렉터리는 Karmada 설치나 member join을 담당하지 않는다. Cluster credential, kubeconfig, token도 저장하지 않는다.
+기능별 Application YAML은 두지 않는다. 신규 release는 `release.yaml`을
+추가하면 ApplicationSet이 Argo `Application`을 생성한다. Karmada 설치,
+member join, kubeconfig와 credential은 이 디렉터리가 관리하지 않는다.

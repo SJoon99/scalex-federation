@@ -1,0 +1,22 @@
+apiVersion: policy.karmada.io/v1alpha1
+kind: PropagationPolicy
+metadata:
+  name: rgw-analysis-web-result-web-to-b
+  namespace: scalex-rgw-analysis-web
+spec:
+  resourceSelectors:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: rgw-analysis-web-result-web
+    - apiVersion: v1
+      kind: Service
+      name: rgw-analysis-web-result-web
+  propagateDeps: true
+  placement:
+    clusterAffinity:
+      clusterNames:
+        - b
+    spreadConstraints:
+      - spreadByField: cluster
+        minGroups: 1
+        maxGroups: 1

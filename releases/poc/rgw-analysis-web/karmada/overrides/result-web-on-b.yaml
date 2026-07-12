@@ -1,0 +1,22 @@
+apiVersion: policy.karmada.io/v1alpha1
+kind: OverridePolicy
+metadata:
+  name: rgw-analysis-web-result-web-on-b
+  namespace: scalex-rgw-analysis-web
+spec:
+  resourceSelectors:
+    - apiVersion: v1
+      kind: Service
+      name: rgw-analysis-web-result-web
+  overrideRules:
+    - targetCluster:
+        clusterNames:
+          - b
+      overriders:
+        plaintext:
+          - path: /spec/type
+            operator: replace
+            value: LoadBalancer
+          - path: /metadata/annotations/lbipam.cilium.io~1ips
+            operator: add
+            value: 10.33.142.20

@@ -1,0 +1,51 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: scalex-federation-releases
+  namespace: argo
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - git:
+        repoURL: https://github.com/SJoon99/scalex-federation.git
+        revision: main
+        files:
+          - path: releases/*/*/release.yaml
+  template:
+    metadata:
+      name: 'federation-{{ .environment }}-{{ .name }}'
+      namespace: argo
+      labels:
+        app.kubernetes.io/part-of: scalex-federation
+        scalex.io/environment: '{{ .environment }}'
+        scalex.io/release: '{{ .name }}'
+    spec:
+      project: scalex-federation
+      destination:
+        name: karmada
+        namespace: '{{ .namespace }}'
+      sources:
+        - repoURL: '{{ .chart.repoURL }}'
+          targetRevision: '{{ .chart.revision }}'
+          path: '{{ .chart.path }}'
+          helm:
+            releaseName: '{{ .name }}'
+            valueFiles:
+              - '$federation/{{ .valuesFile }}'
+        - repoURL: https://github.com/SJoon99/scalex-federation.git
+          targetRevision: main
+          ref: federation
+        - repoURL: https://github.com/SJoon99/scalex-federation.git
+          targetRevision: main
+          path: '{{ .policyPath }}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - RespectIgnoreDifferences=true
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true

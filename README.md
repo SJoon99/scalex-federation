@@ -44,6 +44,30 @@ member clusters
 | [`tests/`](tests/README.md) | render 및 정책 정합성 검증 |
 | [`scripts/`](scripts/README.md) | 반복 가능한 로컬·CI 검증 도구 |
 
+## Release discovery
+
+```text
+releases/<environment>/<release>/release.yaml
+                   │
+                   ▼
+bootstrap/ApplicationSet
+                   │ Argo Application 생성
+                   ▼
+feature Helm chart + Federation values + Karmada policies
+                   │
+                   ▼
+Tower Karmada API → member clusters
+```
+
+실제 image/chart blob은 Registry에 저장한다. 이 repository에는 immutable
+revision, runtime values, placement와 override만 저장한다.
+
+## First POC
+
+`releases/poc/rgw-analysis-web`은 B의 RGW 입력을 C에서 분석하고 결과를 B의
+Nginx로 제공하는 첫 vertical slice다. B/C 이름은 Federation policy에만
+존재하며 feature chart는 cluster-neutral 상태를 유지한다.
+
 ## 기본 원칙
 
 - Feature source와 build logic은 feature repository가 소유한다.

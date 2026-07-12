@@ -1,0 +1,19 @@
+apiVersion: policy.karmada.io/v1alpha1
+kind: PropagationPolicy
+metadata:
+  name: rgw-analysis-web-dataset-seeder-to-b
+  namespace: scalex-rgw-analysis-web
+spec:
+  resourceSelectors:
+    - apiVersion: batch/v1
+      kind: Job
+      name: rgw-analysis-web-dataset-seeder
+  propagateDeps: true
+  placement:
+    clusterAffinity:
+      clusterNames:
+        - b
+    spreadConstraints:
+      - spreadByField: cluster
+        minGroups: 1
+        maxGroups: 1
