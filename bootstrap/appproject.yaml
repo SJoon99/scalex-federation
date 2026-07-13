@@ -14,6 +14,8 @@ spec:
   clusterResourceWhitelist:
     - group: ""
       kind: Namespace
+    - group: work.karmada.io
+      kind: ClusterResourceBinding
   namespaceResourceWhitelist:
     - group: ""
       kind: ConfigMap
@@ -29,3 +31,5 @@ spec:
       kind: PropagationPolicy
     - group: policy.karmada.io
       kind: OverridePolicy
+    - group: work.karmada.io
+      kind: ResourceBinding

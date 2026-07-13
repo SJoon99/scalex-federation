@@ -26,20 +26,6 @@ spec:
       destination:
         name: karmada
         namespace: '{{ .namespace }}'
-      sources:
-        - repoURL: '{{ .chart.repoURL }}'
-          targetRevision: '{{ .chart.revision }}'
-          path: '{{ .chart.path }}'
-          helm:
-            releaseName: '{{ .name }}'
-            valueFiles:
-              - '$federation/{{ .valuesFile }}'
-        - repoURL: https://github.com/SJoon99/scalex-federation.git
-          targetRevision: main
-          ref: federation
-        - repoURL: https://github.com/SJoon99/scalex-federation.git
-          targetRevision: main
-          path: '{{ .policyPath }}'
       syncPolicy:
         automated:
           prune: true
@@ -49,3 +35,23 @@ spec:
           - RespectIgnoreDifferences=true
           - ServerSideApply=true
           - SkipDryRunOnMissingResource=true
+  templatePatch: |
+    spec:
+      sources:
+        - repoURL: {{ .chart.repoURL | toJson }}
+          targetRevision: {{ .chart.revision | toJson }}
+          path: {{ .chart.path | toJson }}
+          helm:
+            releaseName: {{ .name | toJson }}
+            valueFiles:
+              - {{ printf "$federation/%s" .valuesFile | toJson }}
+        - repoURL: https://github.com/SJoon99/scalex-federation.git
+          targetRevision: main
+          ref: federation
+        - repoURL: https://github.com/SJoon99/scalex-federation.git
+          targetRevision: main
+          path: {{ .policy.path | toJson }}
+        {{- if eq .policy.renderer "directory" }}
+          directory:
+            recurse: true
+        {{- end }}

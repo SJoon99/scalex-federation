@@ -19,6 +19,20 @@ require yq
 
 kubectl kustomize "$ROOT/bootstrap" > "$tmp/bootstrap.yaml"
 
+for binding in ResourceBinding ClusterResourceBinding; do
+  BINDING="$binding" yq ea -e '
+    select(.kind == "AppProject" and .metadata.name == "scalex-federation") |
+    (
+      .spec.namespaceResourceWhitelist[]?,
+      .spec.clusterResourceWhitelist[]?
+    ) |
+    select(.group == "work.karmada.io" and .kind == strenv(BINDING))
+  ' "$tmp/bootstrap.yaml" >/dev/null || {
+    echo "AppProject must expose Karmada child resource: $binding" >&2
+    exit 1
+  }
+done
+
 mapfile -t descriptors < <(find "$ROOT/releases" -mindepth 3 -maxdepth 3 -name release.yaml -type f | sort)
 if [ "${#descriptors[@]}" -eq 0 ]; then
   echo "no release descriptors found" >&2
@@ -31,9 +45,10 @@ for descriptor in "${descriptors[@]}"; do
   namespace="$(yq -r '.namespace' "$descriptor")"
   revision="$(yq -r '.chart.revision' "$descriptor")"
   values_rel="$(yq -r '.valuesFile' "$descriptor")"
-  policy_rel="$(yq -r '.policyPath' "$descriptor")"
+  policy_rel="$(yq -r '.policy.path' "$descriptor")"
+  policy_renderer="$(yq -r '.policy.renderer' "$descriptor")"
 
-  for value in "$name" "$namespace" "$revision" "$values_rel" "$policy_rel"; do
+  for value in "$name" "$namespace" "$revision" "$values_rel" "$policy_rel" "$policy_renderer"; do
     if [ -z "$value" ] || [ "$value" = null ]; then
       echo "missing release descriptor field: $descriptor" >&2
       exit 1
@@ -44,11 +59,35 @@ for descriptor in "${descriptors[@]}"; do
     exit 1
   fi
   test -f "$ROOT/$values_rel"
-  test -f "$ROOT/$policy_rel/kustomization.yaml"
 
   policy_render="$tmp/${name}-policies.yaml"
   chart_render="$tmp/${name}-chart.yaml"
-  kubectl kustomize "$ROOT/$policy_rel" > "$policy_render"
+  case "$policy_renderer" in
+    kustomize)
+      test -f "$ROOT/$policy_rel/kustomization.yaml"
+      kubectl kustomize "$ROOT/$policy_rel" > "$policy_render"
+      ;;
+    directory)
+      if find "$ROOT/$policy_rel" -type f \
+        \( -name 'kustomization.yaml' -o -name 'kustomization.yml' -o -name 'Kustomization' -o -name 'Chart.yaml' \) \
+        -print -quit | grep -q .; then
+        echo "directory renderer cannot contain Kustomize or Helm entrypoints: $policy_rel" >&2
+        exit 1
+      fi
+      mapfile -t policy_files < <(
+        find "$ROOT/$policy_rel" -type f \( -name '*.yaml' -o -name '*.yml' \) | sort
+      )
+      if [ "${#policy_files[@]}" -eq 0 ]; then
+        echo "directory renderer found no YAML: $policy_rel" >&2
+        exit 1
+      fi
+      yq ea '.' "${policy_files[@]}" > "$policy_render"
+      ;;
+    *)
+      echo "unsupported policy renderer '$policy_renderer': $descriptor" >&2
+      exit 1
+      ;;
+  esac
 
   if [ -z "$FEATURE_REPO" ] || [ ! -f "$FEATURE_REPO/chart/Chart.yaml" ]; then
     echo "feature repository not found; set FEATURE_REPO" >&2

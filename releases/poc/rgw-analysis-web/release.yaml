@@ -6,4 +6,6 @@ chart:
   path: chart
   revision: 63982d9a35cab7199f0fd461c4ed2bb85af4a3e0
 valuesFile: releases/poc/rgw-analysis-web/values.yaml
-policyPath: releases/poc/rgw-analysis-web/karmada
+policy:
+  path: releases/poc/rgw-analysis-web/karmada
+  renderer: kustomize
