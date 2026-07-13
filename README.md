@@ -88,8 +88,9 @@ Karmada  ──소유──> b/c에 Push된 실제 복제본
 
 따라서 Argo Application은 Karmada API의 원본 리소스, policy, 원본에 집계된
 health/status를 중심으로 보여준다. `AppProject`는 Karmada가 만든
-`ResourceBinding`/`ClusterResourceBinding`도 허용하므로 Argo resource tree에서
-원본의 자식으로 placement와 applied 상태를 확인할 수 있다.
+`ResourceBinding`/`ClusterResourceBinding`도 자식 리소스로 표시할 수 있도록
+허용한다. Karmada의 Argo 연동 모델에서는 Binding이 placement와 applied 상태를
+설명한다.
 
 반면 member cluster의 Pod/ReplicaSet과 실행 namespace의 `Work`까지 하나의
 Argo Application 트리에 모두 직접 소유 리소스로 넣지는 않는다. 서로 다른
@@ -98,6 +99,9 @@ Kubernetes API의 복제본을 Argo가 다시 추적하게 하면 Karmada와 소
 사용하고, Argo에서는 원본의 집계 상태를 확인한다.
 
 현재 Tower의 `karmada` destination credential은 `ResourceBinding`과 `Work`의
-read 권한을 갖는다. `AppProject`의 Binding 허용은 자식 resource tree 표시를
-위해서도 필요하다. 이 권한은 관찰용이며 Federation Git이 해당 생성 리소스를
-직접 선언하거나 수정한다는 뜻이 아니다.
+get/list/watch 권한을 갖는다. `AppProject`의 Binding 허용도 자식 resource tree
+표시의 전제다. 다만 현재 Tower Argo CD v3.2.6의 실제 tree에서는 원본의 집계
+health는 보이지만 Binding 노드는 노출되지 않는 상태다. 따라서 현 버전에서는
+Binding과 Work 상세를 Karmada API에서 조회하고, Argo 업그레이드 시 공식 연동
+tree 동작을 다시 검증한다. 이 권한은 관찰용이며 Federation Git이 해당 생성
+리소스를 직접 선언하거나 수정한다는 뜻이 아니다.

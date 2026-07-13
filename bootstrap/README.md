@@ -3,7 +3,7 @@
 Tower Argo CD가 Federation release를 발견하는 고정 진입점이다.
 
 - `appproject.yaml`: Federation source와 Karmada destination 경계,
-  Karmada Binding 자식 리소스 표시 범위
+  Karmada Binding 자식 리소스 표시를 위한 허용 범위
 - `applicationset.yaml`: `releases/*/*/release.yaml` 자동 발견
 - `kustomization.yaml`: Tower root Application이 동기화하는 경로
 
