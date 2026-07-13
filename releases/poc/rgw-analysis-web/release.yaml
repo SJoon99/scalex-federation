@@ -8,4 +8,3 @@ chart:
 valuesFile: releases/poc/rgw-analysis-web/values.yaml
 policy:
   path: releases/poc/rgw-analysis-web/karmada
-  renderer: kustomize

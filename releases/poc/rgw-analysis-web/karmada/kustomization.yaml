@@ -1,8 +1,0 @@
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-  - propagation/dataset-seeder-to-b.yaml
-  - propagation/analyzer-to-c.yaml
-  - propagation/result-web-to-b.yaml
-  - overrides/runtime-on-b.yaml
-  - overrides/result-web-on-b.yaml

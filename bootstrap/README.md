@@ -5,12 +5,12 @@ Tower Argo CD가 Federation release를 발견하는 고정 진입점이다.
 - `appproject.yaml`: Federation source와 Karmada destination 경계,
   Karmada Binding 자식 리소스 표시를 위한 허용 범위
 - `applicationset.yaml`: `releases/*/*/release.yaml` 자동 발견
-- `kustomization.yaml`: Tower root Application이 동기화하는 경로
 
-ApplicationSet은 각 `release.yaml`의 `policy.renderer`를 읽는다.
-
-- `kustomize`: policy path의 `kustomization.yaml`이 선택한 파일만 적용
-- `directory`: policy path에 `directory.recurse=true`를 설정해 하위 YAML을 모두 적용
+Tower root Application은 이 디렉터리의 두 manifest를 plain directory로 읽는다.
+하위 manifest가 없으므로 bootstrap에는 재귀 탐색이 필요하지 않다.
+ApplicationSet은 각 release의 `policy.path`에 `directory.recurse=true`를
+적용하므로 `karmada/` 아래 Kubernetes YAML은 모두 배포 대상이다. 문서용
+YAML이나 미완성 manifest는 이 경로에 두지 않는다.
 
 기능별 Application YAML은 두지 않는다. 신규 release는 `release.yaml`을
 추가하면 ApplicationSet이 Argo `Application`을 생성한다. Karmada 설치,

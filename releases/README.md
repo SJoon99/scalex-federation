@@ -23,48 +23,43 @@ releases/
       ├─ release.yaml
       ├─ values.yaml
       └─ karmada/
-         ├─ kustomization.yaml   # renderer=kustomize일 때만 사용
          ├─ propagation/
+         │  └─ *.yaml
          └─ overrides/
+            └─ *.yaml
 ```
 
 - `release.yaml`: ApplicationSet이 읽는 chart 좌표, immutable revision,
-  namespace, policy 경로와 renderer
-- `values.yaml`: image revision, endpoint, object path 등 runtime desired state
+  namespace와 policy 경로
+- `values.yaml`: 여러 image의 immutable digest, endpoint, object path 등 runtime desired state
 - `propagation/`: component를 member cluster에 배치하는 정책
 - `overrides/`: Karmada가 소유하는 workload 복제본의 cluster별 차이
 
 실제 image/chart blob은 Registry에 두며 이 디렉터리에는 artifact 좌표만
 기록한다.
 
-## Policy renderer 선택
+## Policy 적용 규칙
 
-Release마다 다음 두 방식 중 하나를 선택한다.
+ApplicationSet은 `policy.path`에 항상 `directory.recurse=true`를 적용한다.
+따라서 `karmada/` 아래의 `*.yaml`, `*.yml`은 별도 목록 파일 없이 모두
+Karmada API에 동기화된다.
 
-### Kustomize — 적용 파일을 명시적으로 선택
+- `karmada/propagation/`: `PropagationPolicy`만 저장
+- `karmada/overrides/`: `OverridePolicy`만 저장
+- `karmada/`에는 `kustomization.yaml`, `Chart.yaml`, 일반 설정 YAML을 두지 않음
+- 설명 문서는 release root의 Markdown에 기록
+- 모든 policy는 release namespace를 사용
 
-```yaml
-policy:
-  path: releases/poc/example/karmada
-  renderer: kustomize
-```
+## CI promotion
 
-`policy.path`에 `kustomization.yaml`을 두고 `resources`에 적용할 파일을
-명시한다. 파일이 디렉터리에 추가돼도 자동 적용되지 않으므로 운영 release의
-기본값으로 권장한다.
+Feature repository의 CI는 build/test/scan/publish를 끝낸 뒤 이 디렉터리만
+변경하는 Pull Request를 만든다.
 
-### Directory — 하위 YAML을 재귀적으로 모두 적용
+1. `release.yaml.chart.revision`을 검증된 feature commit SHA로 갱신
+2. `values.yaml.images.<component>`의 모든 변경 image를 digest로 갱신
+3. 하나의 기능에서 여러 image가 생성되면 같은 commit에서 모두 함께 갱신
+4. Federation 검증 통과 후 merge하며 cluster에는 직접 배포하지 않음
 
-```yaml
-policy:
-  path: releases/dev/example/karmada
-  renderer: directory
-```
-
-ApplicationSet이 해당 source에 `directory.recurse: true`를 생성한다. 지정한
-경로 아래의 `*.yaml`, `*.yml`이 모두 적용되므로 작은 실험용 release에는
-간결하지만, 문서용 YAML이나 미완성 manifest도 배포될 수 있다.
-
-Directory 경로에는 `kustomization.yaml`이나 `Chart.yaml`을 함께 두지 않는다.
-두 renderer를 하나의 release에서 동시에 사용하는 것이 아니라, release별로
-둘 중 하나를 선택한다.
+이미지 개수와 component 이름은 feature마다 달라도 된다. `images` map 전체가
+하나의 release 단위로 승격되므로 chart와 여러 image의 조합이 Git commit 하나로
+추적되고 rollback된다.

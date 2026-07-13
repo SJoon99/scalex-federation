@@ -62,6 +62,22 @@ Tower Karmada API → member clusters
 실제 image/chart blob은 Registry에 저장한다. 이 repository에는 immutable
 revision, runtime values, placement와 override만 저장한다.
 
+ApplicationSet은 feature chart와 release `values.yaml`을 렌더링하고,
+`karmada/` 아래의 policy YAML을 재귀적으로 함께 읽는다. 별도 Kustomize
+entrypoint나 기능별 Application 파일은 사용하지 않는다.
+
+## CI promotion 경계
+
+각 feature repository의 CI가 기능별 build/test/scan을 소유한다. CI 성공 후
+다음 두 좌표를 하나의 Federation Pull Request에서 원자적으로 갱신한다.
+
+- `release.yaml`: 검증된 feature chart commit SHA
+- `values.yaml`: 해당 build에서 변경된 모든 image의 repository/tag/digest
+
+한 기능이 API, worker, sidecar 등 여러 image를 만들더라도 `images.<component>`
+map에 모두 기록한다. CI는 child cluster에 직접 접근하지 않으며 merge된 desired
+state만 Tower Argo와 Karmada가 배포한다.
+
 ## First POC
 
 `releases/poc/rgw-analysis-web`은 B의 RGW 입력을 C에서 분석하고 결과를 B의
