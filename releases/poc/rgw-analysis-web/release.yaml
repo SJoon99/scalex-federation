@@ -5,9 +5,9 @@ environment: poc
 namespace: scalex-rgw-analysis-web
 renderer: helm/v1
 source:
-  repoURL: https://github.com/SJoon99/scalex-feature-poc.git
-  path: chart
-  revision: 63982d9a35cab7199f0fd461c4ed2bb85af4a3e0
+  repoURL: https://github.com/BellTigerLee/smurf-child.git
+  path: charts/rgw-analysis-web
+  revision: 05e2de4a0963a2373588a999c415e14b6648febc
 values:
   path: releases/poc/rgw-analysis-web/values.yaml
 dependencies:
