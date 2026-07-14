@@ -366,7 +366,7 @@ for descriptor in "${descriptors[@]}"; do
         (.name | type) == "string" and (.name | length) > 0 and
         .namespace == $namespace) and
       (if .kind == "PropagationPolicy" then
-        (.spec.propagateDeps | type) == "boolean" and
+        ((.spec.propagateDeps // false) | type) == "boolean" and
         (.spec.placement.clusterAffinity.clusterNames | type) == "array" and
         (.spec.placement.clusterAffinity.clusterNames | length) > 0 and
         all(.spec.placement.clusterAffinity.clusterNames[]; . == "b" or . == "c")
@@ -427,14 +427,16 @@ for descriptor in "${descriptors[@]}"; do
       };
       def exact_propagation($name; $selectors; $clusters; $propagate_deps; $spread):
         .metadata.name == $name and
-        (.spec | keys | sort) == ["conflictResolution", "placement", "preemption", "priority",
-          "propagateDeps", "resourceSelectors", "schedulerName"] and
+        (.spec | keys | sort) == (["conflictResolution", "placement", "preemption", "priority",
+          "resourceSelectors", "schedulerName"] +
+          (if $propagate_deps == null then [] else ["propagateDeps"] end) | sort) and
         .spec.conflictResolution == "Abort" and
         .spec.preemption == "Never" and
         .spec.priority == 0 and
         .spec.schedulerName == "default-scheduler" and
         .spec.resourceSelectors == $selectors and
-        .spec.propagateDeps == $propagate_deps and
+        (if $propagate_deps == null then (.spec.propagateDeps // false) == false
+         else .spec.propagateDeps == $propagate_deps end) and
         .spec.placement == ({"clusterAffinity": {"clusterNames": $clusters}} +
           (if $spread then {"spreadConstraints": [{"spreadByField":"cluster","minGroups":1,"maxGroups":1}]} else {} end));
       [.[] | select(.kind == "PropagationPolicy")] as $policies |
@@ -449,7 +451,7 @@ for descriptor in "${descriptors[@]}"; do
       (if $profile == "legacy-poc" then
         any($policies[]; exact_propagation("rgw-analysis-web-object-bucket-claim-to-b";
           [selector("objectbucket.io/v1alpha1"; "ObjectBucketClaim"; "rgw-analysis-web-bucket")];
-          ["b"]; false; false))
+          ["b"]; null; false))
        else true end)
     ' >/dev/null || fail "invalid $source_contract RGW propagation policy contract"
 
