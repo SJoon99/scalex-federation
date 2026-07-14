@@ -59,7 +59,7 @@ mapfile -t source_rows < <(
   yq e -r -N '[.source.repoURL, .source.path, .source.revision] | @tsv' \
     "$ROOT"/releases/*/*/release.yaml
 )
-[ "${#source_rows[@]}" -eq 2 ] || fail "active source extraction must produce exactly two rows"
+[ "${#source_rows[@]}" -eq 1 ] || fail "active source extraction must match the single active release"
 if printf '%s\n' "${source_rows[@]}" | grep -Fxq -- '---'; then
   fail "active source extraction emitted a bogus YAML document row"
 fi
@@ -104,7 +104,7 @@ yq e -e '
 [ "$(yq e -r '.jobs.observe.steps[] | select(.name == "Remove ephemeral kubeconfig") | .run' "$observe")" = \
   'rm -f "$RUNNER_TEMP/scalex-release.kubeconfig"' ] || fail "runtime credential cleanup is not exact"
 
-expected_observe_run=$'set -euo pipefail\nset +x\numask 077\nkubeconfig="$RUNNER_TEMP/scalex-release.kubeconfig"\ninstall -m 0600 /dev/null "$kubeconfig"\nprintf \'%s\' "$SCALEX_RELEASE_KUBECONFIG" > "$kubeconfig"\nunset SCALEX_RELEASE_KUBECONFIG\ntest -s "$kubeconfig"\nKUBECONFIG="$kubeconfig" ./scripts/rgw-analysis-web/observe-release.sh poc rgw-analysis-web\nKUBECONFIG="$kubeconfig" ./scripts/rgw-analysis-web/observe-release.sh cuty rgw-analysis-web'
+expected_observe_run=$'set -euo pipefail\nset +x\numask 077\nkubeconfig="$RUNNER_TEMP/scalex-release.kubeconfig"\ninstall -m 0600 /dev/null "$kubeconfig"\nprintf \'%s\' "$SCALEX_RELEASE_KUBECONFIG" > "$kubeconfig"\nunset SCALEX_RELEASE_KUBECONFIG\ntest -s "$kubeconfig"\nKUBECONFIG="$kubeconfig" ./scripts/rgw-analysis-web/observe-release.sh poc rgw-analysis-web'
 actual_observe_run="$(yq e -r '.jobs.observe.steps[] | select(.name == "Observe merged release without changing desired state") | .run' "$observe")"
 [ "$actual_observe_run" = "$expected_observe_run" ] || fail "runtime credential handling differs from the safe whitelist"
 [ "$(grep -Fo 'secrets.SCALEX_RELEASE_KUBECONFIG' "$observe" | wc -l)" -eq 1 ] || fail "protected secret expression must appear exactly once"

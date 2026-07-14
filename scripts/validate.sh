@@ -113,6 +113,11 @@ for binding in ResourceBinding ClusterResourceBinding; do
     select(.group == "work.karmada.io" and .kind == strenv(BINDING))
   ' "$ROOT/bootstrap/appproject.yaml" >/dev/null || fail "AppProject must expose Karmada child resource: $binding"
 done
+yq e -e '
+  .spec.namespaceResourceWhitelist[] |
+  select(.group == "objectbucket.io" and .kind == "ObjectBucketClaim")
+' "$ROOT/bootstrap/appproject.yaml" >/dev/null ||
+  fail "AppProject must allow feature-owned ObjectBucketClaims"
 
 children="$ROOT/contracts/children.yaml"
 yq e '.' "$children" >/dev/null
@@ -433,14 +438,19 @@ for descriptor in "${descriptors[@]}"; do
         .spec.placement == ({"clusterAffinity": {"clusterNames": $clusters}} +
           (if $spread then {"spreadConstraints": [{"spreadByField":"cluster","minGroups":1,"maxGroups":1}]} else {} end));
       [.[] | select(.kind == "PropagationPolicy")] as $policies |
-      ($policies | length) == 3 and
+      ($policies | length) == (if $profile == "legacy-poc" then 4 else 3 end) and
       any($policies[]; exact_propagation("rgw-analysis-web-dataset-seeder-to-b";
         [selector("batch/v1"; "Job"; "rgw-analysis-web-dataset-seeder")]; ["b"]; true; true)) and
       any($policies[]; exact_propagation("rgw-analysis-web-analyzer-to-c";
         [selector("batch/v1"; "Job"; "rgw-analysis-web-analyzer")]; ["c"]; true; true)) and
       any($policies[]; exact_propagation("rgw-analysis-web-result-web-to-b";
         [selector("apps/v1"; "Deployment"; "rgw-analysis-web-result-web"),
-         selector("v1"; "Service"; "rgw-analysis-web-result-web")]; ["b"]; true; true))
+         selector("v1"; "Service"; "rgw-analysis-web-result-web")]; ["b"]; true; true)) and
+      (if $profile == "legacy-poc" then
+        any($policies[]; exact_propagation("rgw-analysis-web-object-bucket-claim-to-b";
+          [selector("objectbucket.io/v1alpha1"; "ObjectBucketClaim"; "rgw-analysis-web-bucket")];
+          ["b"]; false; false))
+       else true end)
     ' >/dev/null || fail "invalid $source_contract RGW propagation policy contract"
 
   helm lint "$chart_dir" -f "$values_file"
@@ -448,6 +458,19 @@ for descriptor in "${descriptors[@]}"; do
   helm template "$name" "$chart_dir" --namespace "$namespace" -f "$values_file" > "$chart_render"
   yq e -e 'select(.kind == "Secret" or .kind == "ExternalSecret" or .kind == "PropagationPolicy" or .kind == "OverridePolicy" or .kind == "Namespace" or .kind == "StorageClass" or .kind == "CustomResourceDefinition" or .kind == "ClusterRole" or .kind == "ClusterRoleBinding")' "$chart_render" >/dev/null 2>&1 &&
     fail "feature chart renders a forbidden or cluster-specific resource"
+  if [ "$source_contract" = legacy-poc ]; then
+    NAMESPACE="$namespace" yq e -o=json -I=0 '
+      select(.kind == "ObjectBucketClaim")
+    ' "$chart_render" | jq -s -e --arg namespace "$namespace" '
+      length == 1 and
+      .[0].apiVersion == "objectbucket.io/v1alpha1" and
+      .[0].metadata.name == "rgw-analysis-web-bucket" and
+      .[0].metadata.namespace == $namespace and
+      .[0].metadata.labels["scalex.io/component"] == "object-storage-claim" and
+      .[0].spec.bucketName == "rgw-analysis-web-poc" and
+      .[0].spec.storageClassName == "ceph-bucket"
+    ' >/dev/null || fail "legacy POC must render exactly one feature-owned ObjectBucketClaim"
+  fi
   if [ "$source_contract" = smurf-child ]; then
     endpoint="$(yq e -r '.storage.endpointUrl' "$values_file")"
     bucket="$(yq e -r '.storage.bucket' "$values_file")"

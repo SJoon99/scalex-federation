@@ -3,8 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 EXPECTED="$ROOT/tests/fixtures/contracts/multi-release-active.tsv"
-FEATURE_REPOS_ROOT="${FEATURE_REPOS_ROOT:-$(dirname "$ROOT")}"; readonly FEATURE_REPOS_ROOT
-export FEATURE_REPOS_ROOT
+INPUT_FEATURE_REPOS_ROOT="${FEATURE_REPOS_ROOT:-$(dirname "$ROOT")}"; readonly INPUT_FEATURE_REPOS_ROOT
 
 for tool in check-jsonschema git helm jq tar yq; do
   command -v "$tool" >/dev/null 2>&1 || {
@@ -20,6 +19,24 @@ test -f "$EXPECTED" || {
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
+
+FEATURE_REPOS_ROOT="$tmp/feature-sources"; readonly FEATURE_REPOS_ROOT
+mkdir -p "$FEATURE_REPOS_ROOT"
+test -d "$INPUT_FEATURE_REPOS_ROOT/scalex-feature-poc/.git" || {
+  echo "feature repository not found: $INPUT_FEATURE_REPOS_ROOT/scalex-feature-poc" >&2
+  exit 1
+}
+ln -s "$INPUT_FEATURE_REPOS_ROOT/scalex-feature-poc" "$FEATURE_REPOS_ROOT/scalex-feature-poc"
+smurf_source="$FEATURE_REPOS_ROOT/smurf-child"
+mkdir -p "$smurf_source/charts/rgw-analysis-web"
+cp -R "$ROOT/tests/fixtures/feature-chart/." "$smurf_source/charts/rgw-analysis-web/"
+git -C "$smurf_source" init -q
+git -C "$smurf_source" config user.email fixture@example.invalid
+git -C "$smurf_source" config user.name fixture
+git -C "$smurf_source" remote add origin https://github.com/BellTigerLee/smurf-child.git
+git -C "$smurf_source" add charts
+git -C "$smurf_source" commit -qm fixture
+export FEATURE_REPOS_ROOT
 
 assert_exact_release_inventory() {
   local federation_root="$1"
@@ -177,26 +194,52 @@ record_aggregate_identities
   echo "happy-path releases contain duplicate rendered resource identity" >&2
   exit 1
 }
-mapfile -t cuty_load_balancer_ips < <(
-  find "$ROOT/releases/cuty/rgw-analysis-web/karmada" -type f \
-    \( -name '*.yaml' -o -name '*.yml' \) -print0 |
-    LC_ALL=C sort -z |
-    xargs -0 -r yq e -r -N '
-      select(.kind == "OverridePolicy") |
-      .spec.overrideRules[].overriders.plaintext[]? |
-      select(.path == "/metadata/annotations/lbipam.cilium.io~1ips") |
-      .value
-    ' | sed '/^[[:space:]]*$/d'
-)
-if printf '%s\n' "${cuty_load_balancer_ips[@]}" | grep -Fxq '10.33.142.20'; then
-  echo "Cuty release reuses the POC explicit LoadBalancer IP" >&2
-  exit 1
-fi
-
 make_case() {
   local target="$1"
   mkdir -p "$target"
   cp -R "$ROOT/bootstrap" "$ROOT/contracts" "$ROOT/releases" "$ROOT/scripts" "$target/"
+}
+
+add_second_release() {
+  local target="$1"
+  local release_root="$target/releases/canary/rgw-analysis-web"
+  local revision
+  mkdir -p "$(dirname "$release_root")"
+  cp -R "$target/releases/poc/rgw-analysis-web" "$release_root"
+  cp "$ROOT/tests/fixtures/contracts/valid-release.yaml" "$release_root/release.yaml"
+  cp "$ROOT/tests/fixtures/contracts/valid-values.yaml" "$release_root/values.yaml"
+  revision="$(git -C "$smurf_source" rev-parse HEAD)"
+  yq -i '
+    .environment = "canary" |
+    .namespace = "scalex-rgw-analysis-web-canary" |
+    .values.path = "releases/canary/rgw-analysis-web/values.yaml" |
+    .dependencies.path = "releases/canary/rgw-analysis-web/dependencies" |
+    .policy.path = "releases/canary/rgw-analysis-web/karmada"
+  ' "$release_root/release.yaml"
+  REVISION="$revision" yq -i '.source.revision = strenv(REVISION)' "$release_root/release.yaml"
+  yq -i '
+    .credentials.existingSecret = "scalex-canary-rgw"
+  ' "$release_root/values.yaml"
+  REVISION="$revision" yq -i '
+    .images.flow.tag = "sha-" + strenv(REVISION) |
+    .images.web.tag = "sha-" + strenv(REVISION) |
+    .images.flow.sourceRevision = strenv(REVISION) |
+    .images.web.sourceRevision = strenv(REVISION)
+  ' "$release_root/values.yaml"
+  rm -f "$release_root/karmada/propagation/object-bucket-claim-to-b.yaml"
+  yq -i '
+    .spec.overrideRules[0].overriders.plaintext =
+      [.spec.overrideRules[0].overriders.plaintext[] | select(.path == "/spec/type")]
+  ' "$release_root/karmada/overrides/result-web-on-b.yaml"
+  find "$release_root/karmada" -type f \( -name '*.yaml' -o -name '*.yml' \) -exec \
+    yq -i '
+      .metadata.namespace = "scalex-rgw-analysis-web-canary" |
+      .spec.resourceSelectors[].namespace = "scalex-rgw-analysis-web-canary"
+    ' {} \;
+  VALUE=10.33.142.21 yq -i '
+    (.spec.overrideRules[0].overriders.plaintext[] |
+      select(.path == "/metadata/annotations/lbipam.cilium.io~1ips").value) = strenv(VALUE)
+  ' "$release_root/karmada/overrides/result-web-on-b.yaml"
 }
 
 set_unexpected_release() {
@@ -225,6 +268,7 @@ expect_reject() {
   local target="$tmp/$name"
   shift 2
   make_case "$target"
+  add_second_release "$target"
   "$@" "$target"
   if validate_case "$target" >"$tmp/$name.log" 2>&1; then
     echo "expected multi-release rejection: $name" >&2
@@ -238,15 +282,15 @@ expect_reject() {
 }
 
 set_duplicate_namespace() {
-  yq -i '.namespace = "scalex-rgw-analysis-web"' "$1/releases/cuty/rgw-analysis-web/release.yaml"
+  yq -i '.namespace = "scalex-rgw-analysis-web"' "$1/releases/canary/rgw-analysis-web/release.yaml"
 }
 
 set_descriptor_environment_mismatch() {
-  yq -i '.environment = "poc"' "$1/releases/cuty/rgw-analysis-web/release.yaml"
+  yq -i '.environment = "poc"' "$1/releases/canary/rgw-analysis-web/release.yaml"
 }
 
 set_duplicate_load_balancer_ip() {
-  local legacy_ip cuty_override candidate
+  local legacy_ip canary_override candidate
   local -a legacy_ips
   mapfile -t legacy_ips < <(
     find "$1/releases/poc/rgw-analysis-web/karmada" -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 |
@@ -263,22 +307,22 @@ set_duplicate_load_balancer_ip() {
     exit 1
   }
   legacy_ip="${legacy_ips[0]}"
-  cuty_override=""
+  canary_override=""
   while IFS= read -r candidate; do
     if yq e -e '
       select(.kind == "OverridePolicy") |
       .spec.resourceSelectors[]? |
       select(.apiVersion == "v1" and .kind == "Service")
     ' "$candidate" >/dev/null; then
-      cuty_override="$candidate"
+      canary_override="$candidate"
       break
     fi
   done < <(
-    find "$1/releases/cuty/rgw-analysis-web/karmada" -type f \
+    find "$1/releases/canary/rgw-analysis-web/karmada" -type f \
       \( -name '*.yaml' -o -name '*.yml' \) | LC_ALL=C sort
   )
-  test -n "$cuty_override" || {
-    echo "Smurf release has no Service OverridePolicy" >&2
+  test -n "$canary_override" || {
+    echo "canary release has no Service OverridePolicy" >&2
     exit 1
   }
   VALUE="$legacy_ip" yq -i '
@@ -287,11 +331,12 @@ set_duplicate_load_balancer_ip() {
       "operator": "add",
       "value": strenv(VALUE)
     }]
-  ' "$cuty_override"
+  ' "$canary_override"
 }
 
 pass="$tmp/pass"
 make_case "$pass"
+add_second_release "$pass"
 if ! validate_case "$pass" >"$tmp/pass.log" 2>&1; then
   cat "$tmp/pass.log" >&2
   exit 1
@@ -316,15 +361,6 @@ grep -Fq 'unexpected active descriptor: releases/extra/unexpected/release.yaml' 
   exit 1
 }
 echo "validated unexpected active descriptor rejection"
-
-cuty_revision_case="$tmp/cuty-revision-change"
-make_case "$cuty_revision_case"
-set_release_revision "$cuty_revision_case" cuty 1111111111111111111111111111111111111111
-assert_expected_release_contract "$cuty_revision_case" "$EXPECTED" || {
-  echo "valid Cuty full-SHA promotion was blocked by stable inventory identity" >&2
-  exit 1
-}
-echo "validated mutable Cuty full-SHA inventory contract"
 
 poc_revision_case="$tmp/poc-revision-drift"
 make_case "$poc_revision_case"

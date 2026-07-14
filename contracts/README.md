@@ -21,9 +21,10 @@ Infra Layer, feature repository, Federation 사이에서 공통으로 지켜야 
 | Namespace | descriptor에 `scalex-` prefix namespace를 명시하고 모든 active release에서 유일하게 사용 |
 | Release label | `scalex.io/release=<release>` |
 | Component label | `scalex.io/component=<component>` |
-| Infra ownership | RGW/Ceph/LB pool은 `b-k8s`와 `eecs-k8s`가 소유 |
+| Infra ownership | Ceph/ObjectStore/bucket StorageClass/RGW endpoint/LB pool은 `b-k8s`와 `eecs-k8s`가 소유 |
+| Bucket claim ownership | 기능별 OBC는 feature Helm이 선언하고 Federation/Karmada가 기능 namespace에 배치 |
 | Workload ownership | Job/Deployment/Service는 Federation/Karmada가 소유 |
-| Secret | 값은 Git 금지. POC와 Cuty 모두 승인된 bootstrap 경계에서 Karmada native `Secret`을 준비 |
+| Secret | Feature는 Secret 이름만 참조하고 값은 Git에 저장하지 않음. 승인된 bootstrap bridge 또는 Secret Store가 Rook 생성 credential을 Karmada native `Secret`으로 전달 |
 | Placement | `PropagationPolicy`에서만 member cluster 선택 |
 | Override | Federation workload만 대상, Infra resource 수정 금지 |
 | Chart pin | `release.yaml.source.revision`은 full Git commit SHA |
@@ -33,6 +34,19 @@ Infra Layer, feature repository, Federation 사이에서 공통으로 지켜야 
 
 Argo direct 경로와 Karmada 경로가 동일한 `cluster + namespace + kind + name`
 을 동시에 소유하면 안 된다.
+
+Object-storage lifecycle은 다음 네 단계로 분리한다.
+
+```text
+*-k8s Infra capability
+  → feature Helm ObjectBucketClaim
+  → Federation placement
+  → member Rook bucket/credential provisioning
+```
+
+Karmada는 OBC를 member에 전달하지만 Rook이 member에서 생성한 Secret을 다른
+클러스터로 역수집하지 않는다. Cross-cluster 소비자는 Tower credential bridge
+또는 중앙 Secret Store를 사용한다.
 
 ## Artifact promotion contract
 
@@ -66,8 +80,8 @@ Argo 운영 경계이며 이 repository에 credential을 저장하지 않는다.
 
 ## RGW runtime credential reference
 
-POC와 Cuty `rgw-analysis-web`의 dependency directory에는 배포 YAML을 두지 않는다.
-승인된 bootstrap script가 B의 OBC Secret을 읽고 release values가 참조하는 이름과 key로
+`rgw-analysis-web`의 dependency directory에는 배포 YAML을 두지 않는다.
+승인된 bootstrap script가 B의 기능 소유 OBC Secret을 읽고 release values가 참조하는 이름과 key로
 Karmada API에 native `Secret`을 생성한다. workload `PropagationPolicy`의
 `propagateDeps: true`가 Pod dependency를 member로 전달한다. 어느 경로도 credential 값이나
 kubeconfig를 Git에 저장하지 않는다.

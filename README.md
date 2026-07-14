@@ -86,6 +86,11 @@ state만 Tower Argo와 Karmada가 배포한다.
 Nginx로 제공하는 첫 vertical slice다. B/C 이름은 Federation policy에만
 존재하며 feature chart는 cluster-neutral 상태를 유지한다.
 
+이 release의 OBC는 feature chart가 기능 namespace에 선언하고 Federation이
+B로 배치한다. B Infra는 ObjectStore, bucket StorageClass와 RGW endpoint만
+제공한다. Rook이 생성한 key 값은 Git에 넣지 않고 credential bridge를 통해
+Karmada runtime Secret으로 전달한다.
+
 ## 기본 원칙
 
 - Feature source와 build logic은 feature repository가 소유한다.

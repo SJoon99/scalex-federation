@@ -25,6 +25,13 @@ images:
     digest: sha256:2222222222222222222222222222222222222222222222222222222222222222
     sourceRevision: 0123456789abcdef0123456789abcdef01234567
     pullPolicy: IfNotPresent
+resultWeb:
+  replicas: 1
+  service:
+    annotations:
+      scalex.io/exposure: internal
+    port: 80
+    targetPort: 8080
 service:
   port: 80
   annotations:

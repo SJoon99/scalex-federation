@@ -1,5 +1,9 @@
 # tests
 
+`test-credential-bridge.sh` verifies that the POC bridge reads the
+feature-owned B OBC Secret, writes the distinct Karmada runtime Secret with
+server-side apply, and keeps credential values out of repository files.
+
 GitOps desired state가 merge되기 전에 정적 검증과 smoke 검증을 수행한다.
 
 향후 검증 범위:
@@ -31,7 +35,7 @@ GitOps desired state가 merge되기 전에 정적 검증과 smoke 검증을 수�
 - source contract별 dependency 검증(legacy POC와 Smurf 모두 YAML 0개)
 - release namespace/Application/rendered identity/명시적 LoadBalancer IP의 전역 충돌 거부
 - committed active inventory의 exact path 집합과 안정 identity 검증; POC SHA는 baseline으로
-  고정하고 Cuty promotion SHA는 full 40-character 형식으로 검증
+  고정하고 synthetic Smurf canary fixture로 multi-release 충돌 검증
 - Federation script의 credential materialization과 직접 cluster mutation 부재
 - malformed descriptor, duplicate identity, empty Service annotation과 selector mismatch
 - child cluster를 Argo destination으로 직접 사용하지 않는지

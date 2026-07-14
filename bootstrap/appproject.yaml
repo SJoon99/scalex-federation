@@ -28,6 +28,8 @@ spec:
       kind: Deployment
     - group: batch
       kind: Job
+    - group: objectbucket.io
+      kind: ObjectBucketClaim
     - group: policy.karmada.io
       kind: PropagationPolicy
     - group: policy.karmada.io

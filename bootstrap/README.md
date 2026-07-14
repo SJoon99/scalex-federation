@@ -11,9 +11,10 @@ Tower root Application은 이 디렉터리의 두 manifest를 plain directory로
 ApplicationSet은 각 release의 `policy.path`에 `directory.recurse=true`를
 적용하므로 `karmada/` 아래 Kubernetes YAML은 모두 배포 대상이다. 문서용
 YAML이나 미완성 manifest는 이 경로에 두지 않는다.
-`dependencies.path`도 plain directory로 재귀 처리한다. POC와 Cuty release의 dependency
-directory에는 배포 YAML이 없다. 두 release의 RGW credential은 승인된 bootstrap 경계에서
-Karmada API의 native `Secret`으로 준비한다. Feature chart source는 `renderer: helm/v1`
+`dependencies.path`도 plain directory로 재귀 처리한다. 현재 RGW release의 dependency
+directory에는 배포 YAML이 없다. RGW credential은 승인된 bootstrap 경계에서
+Karmada API의 native `Secret`으로 준비한다. POC는 feature-owned OBC가 B에서 만든
+Secret을 사용하며 credential 값은 Git에 저장하지 않는다. Feature chart source는 `renderer: helm/v1`
 계약에 따라 exact repository/path/full SHA에서 읽는다.
 
 기능별 Application YAML은 두지 않는다. 신규 release는 `release.yaml`을

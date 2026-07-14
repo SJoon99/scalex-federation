@@ -1,10 +1,18 @@
 releaseLabel: rgw-analysis-web
 
+objectStorage:
+  claim:
+    enabled: true
+    name: rgw-analysis-web-bucket
+    bucketName: rgw-analysis-web-poc
+    generateBucketName: ""
+    storageClassName: ceph-bucket
+
 s3:
   endpointUrl: http://10.33.142.10
-  bucket: scalex-poc
+  bucket: rgw-analysis-web-poc
   region: scalex-poc
-  secretName: scalex-poc-rgw
+  secretName: rgw-analysis-web-s3
   inputKey: input/dataset.csv
   resultPrefix: results/rgw-analysis-web
   resultJsonKey: results/rgw-analysis-web/result.json

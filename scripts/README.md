@@ -14,14 +14,25 @@
 - `validate.sh`: standards-compliant JSON Schema가 적용된 strict v1alpha1 descriptor,
   exact child enrollment/origin,
   pinned Helm chart, recursive dependency/policy와 multi-image digest contract 검증
-- `bootstrap-rgw-credentials.sh`: legacy POC용 승인된 credential bootstrap
-- `bootstrap-cuty-rgw-credentials.sh`: B의 OBC Secret을 Cuty values가 참조하는 이름과
-  key surface의 Karmada native Secret으로 준비하는 승인된 bootstrap
-- 두 release의 dependency path에는 deployable YAML을 두지 않는다. Bootstrap 이외의
+- `bootstrap-rgw-credentials.sh`: 기능 namespace의 B OBC가 생성한 credential을
+  기다린 뒤 Karmada API의 runtime Secret으로 server-side apply하는 POC bridge
+- `bootstrap-cuty-rgw-credentials.sh`: 향후 Smurf/Cuty 계약 검증용 호환 bootstrap
+- release dependency path에는 deployable YAML을 두지 않는다. Bootstrap 이외의
   검증 script는 cluster나 credential source에 쓰지 않는다.
 - `rgw-analysis-web/verify-public-images.sh`: 인자 없이 실행하면 모든 active release
   descriptor의 values를 읽어 tag와 digest manifest를 확인한다. 특정 values path를
   인자로 전달하면 그 release들만 검사한다.
+
+POC의 기본 credential 흐름은 다음과 같다.
+
+```text
+B/scalex-rgw-analysis-web/rgw-analysis-web-bucket
+  -> Karmada/scalex-rgw-analysis-web/rgw-analysis-web-s3
+  -> workload propagateDeps -> B/C
+```
+
+bridge는 credential 값을 Git이나 Helm values에 기록하지 않는다. 장기적으로는
+동일 계약을 External Secrets 또는 전용 credential controller로 대체한다.
 
 `validate.sh`는 chart repository가 `scalex-federation`과 같은 상위 디렉터리
 아래에 checkout되어 있다고 가정한다. CI workspace가 다르면

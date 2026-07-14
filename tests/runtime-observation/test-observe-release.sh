@@ -43,6 +43,7 @@ for fixture in "$fixture_root"/*.json "$fixture_root"/*.html; do
 done
 
 if [ "$flow_key" = flow ]; then
+  runtime_secret="$(yq e -r '.credentials.existingSecret' "$ROOT/releases/poc/rgw-analysis-web/values.yaml")"
   endpoint="$(yq e -r '.storage.endpointUrl' "$ROOT/releases/poc/rgw-analysis-web/values.yaml")"
   bucket="$(yq e -r '.storage.bucket' "$ROOT/releases/poc/rgw-analysis-web/values.yaml")"
   region="$(yq e -r '.storage.region' "$ROOT/releases/poc/rgw-analysis-web/values.yaml")"
@@ -63,6 +64,7 @@ if [ "$flow_key" = flow ]; then
   sed "s|run-20260714-001|$run_id|g" \
     "$fixture_root/result-smurf-success.html" > "$tmp/fixtures/result.html"
 else
+  runtime_secret="$(yq e -r '.s3.secretName' "$ROOT/releases/poc/rgw-analysis-web/values.yaml")"
   jq \
     --arg endpoint "$(yq e -r '.s3.endpointUrl' "$ROOT/releases/poc/rgw-analysis-web/values.yaml")" \
     --arg bucket "$(yq e -r '.s3.bucket' "$ROOT/releases/poc/rgw-analysis-web/values.yaml")" \
@@ -73,6 +75,10 @@ else
     ' "$tmp/fixtures/configmap-runtime.json" > "$tmp/fixtures/configmap-runtime.updated.json"
   mv "$tmp/fixtures/configmap-runtime.updated.json" "$tmp/fixtures/configmap-runtime.json"
 fi
+
+jq --arg name "$runtime_secret" '.metadata.name = $name' \
+  "$tmp/fixtures/secret.json" > "$tmp/fixtures/secret.updated.json"
+mv "$tmp/fixtures/secret.updated.json" "$tmp/fixtures/secret.json"
 
 cp "$fixture_root/fake-kubectl.sh" "$tmp/bin/kubectl"
 cp "$fixture_root/fake-curl.sh" "$tmp/bin/curl"
@@ -179,53 +185,24 @@ run_unsupported_source_path_contract
 run_smurf_contract() {
   local federation="$tmp/smurf-federation"
   local fixtures="$tmp/smurf-fixtures"
-  local source_root
-  local smurf_child
-  local exact_smurf_child="$tmp/exact-smurf-child"
-  local values="$ROOT/releases/cuty/rgw-analysis-web/values.yaml"
-  local descriptor="$ROOT/releases/cuty/rgw-analysis-web/release.yaml"
-  local active_revision revision flow_image web_image namespace run_id
-  source_root="${FEATURE_REPOS_ROOT:-$(dirname "$ROOT")}";
-  smurf_child="${SMURF_CHILD_ROOT:-$source_root/smurf-child}"
-  active_revision="$(yq e -r '.source.revision' "$descriptor")"
-  revision="$active_revision"
+  local chart="$ROOT/tests/fixtures/feature-chart"
+  local values="$fixture_root/values-smurf.yaml"
+  local descriptor="$fixture_root/release-smurf.yaml"
+  local revision flow_image web_image namespace run_id expected_secret b_endpoint
+  revision="$(yq e -r '.source.revision' "$descriptor")"
   namespace="$(yq e -r '.namespace' "$descriptor")"
   run_id="$(yq e -r '.runId' "$values")"
+  expected_secret="$(yq e -r '.credentials.existingSecret' "$values")"
+  b_endpoint="$(yq e -r '.storage.endpointUrl' "$values")"
   flow_image="$(yq e -r '.images.flow.repository + ":" + .images.flow.tag + "@" + .images.flow.digest' "$values")"
   web_image="$(yq e -r '.images.web.repository + ":" + .images.web.tag + "@" + .images.web.digest' "$values")"
 
-  test -d "$smurf_child/.git" || {
-    echo "exact Smurf child checkout is required: $smurf_child" >&2
-    exit 1
-  }
-  [ "$(git -C "$smurf_child" rev-parse HEAD)" = "$active_revision" ] || {
-    echo "Smurf child checkout does not match the active release revision" >&2
-    exit 1
-  }
-  mkdir -p "$exact_smurf_child"
-  git -C "$smurf_child" archive "$active_revision" \
-    charts/rgw-analysis-web \
-    src/rgw-analysis-web/web/fixtures/loading.html \
-    src/rgw-analysis-web/web/fixtures/success.html |
-    tar -x -C "$exact_smurf_child"
-  smurf_child="$exact_smurf_child"
-  test -f "$smurf_child/charts/rgw-analysis-web/Chart.yaml" || {
-    echo "Smurf child chart is missing from the exact checkout" >&2
-    exit 1
-  }
-  test -f "$smurf_child/src/rgw-analysis-web/web/fixtures/loading.html" || {
-    echo "Smurf child loading fixture is missing from the exact checkout" >&2
-    exit 1
-  }
-  test -f "$smurf_child/src/rgw-analysis-web/web/fixtures/success.html" || {
-    echo "Smurf child success fixture is missing from the exact checkout" >&2
-    exit 1
-  }
-
-  mkdir -p "$federation/scripts/rgw-analysis-web" "$federation/releases/cuty" "$fixtures"
+  mkdir -p "$federation/scripts/rgw-analysis-web" \
+    "$federation/releases/poc/rgw-analysis-web" "$fixtures"
   cp "$observer" "$federation/scripts/rgw-analysis-web/observe-release.sh"
   chmod +x "$federation/scripts/rgw-analysis-web/observe-release.sh"
-  cp -R "$ROOT/releases/cuty/rgw-analysis-web" "$federation/releases/cuty/"
+  cp "$descriptor" "$federation/releases/poc/rgw-analysis-web/release.yaml"
+  cp "$values" "$federation/releases/poc/rgw-analysis-web/values.yaml"
 
   for fixture in bindings.json deployment.json job-analyzer.json job-seeder.json service.json; do
     sed \
@@ -236,9 +213,10 @@ run_smurf_contract() {
       sed "s/scalex-rgw-analysis-web/$namespace/g" > "$fixtures/$fixture"
   done
   jq \
-    --arg namespace "$namespace" '
+    --arg namespace "$namespace" \
+    --arg secret "$expected_secret" '
       .metadata.namespace = $namespace |
-      .metadata.name = "scalex-cuty-rgw" |
+      .metadata.name = $secret |
       .data = {
         "access-key-id": .data.AWS_ACCESS_KEY_ID,
         "secret-access-key": .data.AWS_SECRET_ACCESS_KEY
@@ -260,10 +238,10 @@ run_smurf_contract() {
     ' "$fixture_root/configmap-runtime-smurf.json" > "$fixtures/configmap-runtime.json"
 
   command -v helm >/dev/null 2>&1 || {
-    echo "helm is required to verify the current Smurf child chart" >&2
+    echo "helm is required to verify the Smurf contract fixture" >&2
     exit 1
   }
-  helm template rgw-analysis-web "$smurf_child/charts/rgw-analysis-web" \
+  helm template rgw-analysis-web "$chart" \
     --namespace "$namespace" -f "$values" > "$tmp/smurf-render.yaml"
   yq e -e '
     select(.kind == "ConfigMap" and .metadata.name == "rgw-analysis-web-runtime") |
@@ -296,8 +274,8 @@ run_smurf_contract() {
     exit 1
   }
 
-  local loading_page="$smurf_child/src/rgw-analysis-web/web/fixtures/loading.html"
-  local success_page="$smurf_child/src/rgw-analysis-web/web/fixtures/success.html"
+  local loading_page="$fixture_root/result-smurf-loading.html"
+  local success_page="$fixture_root/result-smurf-success.html"
 
   local scenario
   for scenario in wrong-api-version wrong-kind missing-secret-key; do
@@ -309,7 +287,7 @@ run_smurf_contract() {
       REAL_YQ="$real_yq" \
       OBSERVE_ATTEMPTS=1 \
       OBSERVE_INTERVAL_SECONDS=0 \
-      "$federation/scripts/rgw-analysis-web/observe-release.sh" cuty rgw-analysis-web \
+      "$federation/scripts/rgw-analysis-web/observe-release.sh" poc rgw-analysis-web \
       >"$tmp/smurf-$scenario.log" 2>&1; then
       echo "Smurf child runtime Secret scenario unexpectedly passed: $scenario" >&2
       exit 1
@@ -325,7 +303,7 @@ run_smurf_contract() {
     REAL_YQ="$real_yq" \
     OBSERVE_ATTEMPTS=1 \
     OBSERVE_INTERVAL_SECONDS=0 \
-    "$federation/scripts/rgw-analysis-web/observe-release.sh" cuty rgw-analysis-web \
+    "$federation/scripts/rgw-analysis-web/observe-release.sh" poc rgw-analysis-web \
     >"$tmp/smurf-loading.log" 2>&1; then
     echo "Smurf child loading page unexpectedly passed runtime observation" >&2
     exit 1
@@ -341,7 +319,7 @@ run_smurf_contract() {
     REAL_YQ="$real_yq" \
     OBSERVE_ATTEMPTS=1 \
     OBSERVE_INTERVAL_SECONDS=0 \
-    "$federation/scripts/rgw-analysis-web/observe-release.sh" cuty rgw-analysis-web \
+    "$federation/scripts/rgw-analysis-web/observe-release.sh" poc rgw-analysis-web \
     >"$tmp/smurf-wrong-run.log" 2>&1; then
     echo "Smurf child success page with the wrong run ID unexpectedly passed" >&2
     exit 1
@@ -355,7 +333,7 @@ run_smurf_contract() {
     REAL_YQ="$real_yq" \
     OBSERVE_ATTEMPTS=1 \
     OBSERVE_INTERVAL_SECONDS=0 \
-    "$federation/scripts/rgw-analysis-web/observe-release.sh" cuty rgw-analysis-web \
+    "$federation/scripts/rgw-analysis-web/observe-release.sh" poc rgw-analysis-web \
     >"$tmp/smurf-child.log" 2>&1 || {
       cat "$tmp/smurf-child.log" >&2
       exit 1

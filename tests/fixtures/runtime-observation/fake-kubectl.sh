@@ -43,7 +43,7 @@ case "$context:$resource:$name" in
       jq '.' "$FAKE_FIXTURE_ROOT/bindings.json"
     fi
     ;;
-  b:secrets:scalex-poc-rgw|c:secrets:scalex-poc-rgw|b:secrets:scalex-cuty-rgw|c:secrets:scalex-cuty-rgw)
+  b:secrets:rgw-analysis-web-s3|c:secrets:rgw-analysis-web-s3|b:secrets:scalex-poc-rgw|c:secrets:scalex-poc-rgw|b:secrets:scalex-cuty-rgw|c:secrets:scalex-cuty-rgw)
     if [ "${FAKE_SCENARIO:-healthy}" = wrong-api-version ] && [ "$context" = b ]; then
       jq '.apiVersion = "v2"' "$FAKE_FIXTURE_ROOT/secret.json"
     elif [ "${FAKE_SCENARIO:-healthy}" = wrong-kind ] && [ "$context" = b ]; then

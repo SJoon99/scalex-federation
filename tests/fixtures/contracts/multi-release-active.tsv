@@ -1,2 +1,1 @@
-releases/poc/rgw-analysis-web/release.yaml	federation-poc-rgw-analysis-web	scalex-rgw-analysis-web	https://github.com/SJoon99/scalex-feature-poc.git	chart	63982d9a35cab7199f0fd461c4ed2bb85af4a3e0
-releases/cuty/rgw-analysis-web/release.yaml	federation-cuty-rgw-analysis-web	scalex-cuty-rgw-analysis-web	https://github.com/BellTigerLee/smurf-child.git	charts/rgw-analysis-web	full-sha
+releases/poc/rgw-analysis-web/release.yaml	federation-poc-rgw-analysis-web	scalex-rgw-analysis-web	https://github.com/SJoon99/scalex-feature-poc.git	chart	f6fbe48edfda972c01bdfa58068e37e00d67a9e1

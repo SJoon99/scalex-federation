@@ -1,5 +1,6 @@
 # Release dependencies
 
-This release has no declarative dependency manifests. It reuses the existing
-`scalex-poc-rgw` Secret prepared by the approved
-`scripts/bootstrap-rgw-credentials.sh` operation before reconciliation.
+This release has no declarative dependency manifests. The feature-owned B OBC
+creates its credential in the release namespace. The approved
+`scripts/bootstrap-rgw-credentials.sh` bridge publishes that runtime value as
+Karmada native Secret `rgw-analysis-web-s3` before workload reconciliation.

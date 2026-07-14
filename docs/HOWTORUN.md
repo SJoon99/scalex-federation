@@ -21,13 +21,14 @@ FEATURE_REPOS_ROOT=/path/to/public-checkouts ./scripts/validate.sh
 ./tests/contracts/test-validation-fixtures.sh
 ```
 
-Cuty RGW release는 Argo sync 전에 B의 OBC Secret을 Karmada native Secret으로 준비한다.
-Credential 값이나 kubeconfig는 repository에 저장하지 않는다.
+현재 POC release는 feature-owned OBC가 B에서 만든 Secret을 Argo sync 전에
+Karmada native runtime Secret으로 준비한다. Credential 값이나 kubeconfig는
+repository에 저장하지 않는다.
 
 ```bash
 B_KUBECONFIG=/path/to/b-kubeconfig \
 KARMADA_KUBECONFIG=/path/to/karmada-kubeconfig \
-./scripts/bootstrap-cuty-rgw-credentials.sh
+./scripts/bootstrap-rgw-credentials.sh
 ```
 
 CI를 도입할 때는 exact origin/SHA/tree를 새로 가져와 같은 검증을 반복하고 public

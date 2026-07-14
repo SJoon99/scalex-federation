@@ -20,12 +20,14 @@ contains_credential_materialization() {
     "$@" >/dev/null
 }
 
-legacy_bootstrap="$ROOT/scripts/bootstrap-rgw-credentials.sh"
+poc_bootstrap="$ROOT/scripts/bootstrap-rgw-credentials.sh"
 cuty_bootstrap="$ROOT/scripts/bootstrap-cuty-rgw-credentials.sh"
-test -x "$legacy_bootstrap" || fail "approved legacy credential bootstrap is missing"
+test -x "$poc_bootstrap" || fail "approved POC credential bridge is missing"
 test -x "$cuty_bootstrap" || fail "approved Cuty credential bootstrap is missing"
-git -C "$ROOT" show e717da4:scripts/bootstrap-rgw-credentials.sh |
-  cmp -s - "$legacy_bootstrap" || fail "approved legacy credential bootstrap drifted"
+"$ROOT/tests/test-credential-bridge.sh" >/dev/null
+if rg -n -- '--arg (access|secret)|jsonpath=.*AWS_' "$poc_bootstrap" >/dev/null; then
+  fail "POC credential bridge exposes credential material through process arguments"
+fi
 
 mapfile -d '' -t automation_files < <(
   find "$ROOT/scripts" "$ROOT/.github/workflows" -type f \
@@ -34,10 +36,10 @@ mapfile -d '' -t automation_files < <(
 mutation_audited_files=()
 credential_audited_files=()
 for file in "${automation_files[@]}"; do
-  if [ "$file" != "$legacy_bootstrap" ] && [ "$file" != "$cuty_bootstrap" ]; then
+  if [ "$file" != "$poc_bootstrap" ] && [ "$file" != "$cuty_bootstrap" ]; then
     mutation_audited_files+=("$file")
   fi
-  [ "$file" = "$legacy_bootstrap" ] || credential_audited_files+=("$file")
+  [ "$file" = "$poc_bootstrap" ] || credential_audited_files+=("$file")
 done
 
 if contains_direct_mutation "${mutation_audited_files[@]}"; then
@@ -49,9 +51,7 @@ if contains_credential_materialization "${credential_audited_files[@]}"; then
 fi
 
 test -z "$(find "$ROOT/releases/poc/rgw-analysis-web/dependencies" -type f \( -name '*.yaml' -o -name '*.yml' \) -print -quit)" ||
-  fail "legacy POC dependencies must not contain deployable YAML"
-test -z "$(find "$ROOT/releases/cuty/rgw-analysis-web/dependencies" -type f \( -name '*.yaml' -o -name '*.yml' \) -print -quit)" ||
-  fail "Cuty dependencies must not contain deployable YAML"
+  fail "POC dependencies must not contain deployable YAML"
 rg -Fq 'TARGET_NAMESPACE=scalex-cuty-rgw-analysis-web' "$cuty_bootstrap" ||
   fail "Cuty bootstrap target namespace drifted"
 rg -Fq 'TARGET_SECRET=scalex-cuty-rgw' "$cuty_bootstrap" ||

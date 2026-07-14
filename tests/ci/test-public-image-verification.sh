@@ -8,10 +8,18 @@ mkdir -p "$tmp/bin"
 cp "$ROOT/tests/fixtures/ci/fake-docker.sh" "$tmp/bin/docker"
 chmod +x "$tmp/bin/docker"
 
-values_files=(
-  "$ROOT/releases/poc/rgw-analysis-web/values.yaml"
-  "$ROOT/releases/cuty/rgw-analysis-web/values.yaml"
+mapfile -t values_files < <(
+  find "$ROOT/releases" -mindepth 3 -maxdepth 3 -name release.yaml -type f -print0 |
+    sort -z |
+    while IFS= read -r -d '' descriptor; do
+      yq e -r '.values.path' "$descriptor"
+    done |
+    sed "s#^#$ROOT/#"
 )
+[ "${#values_files[@]}" -gt 0 ] || {
+  echo "no active release values found" >&2
+  exit 1
+}
 : >"$tmp/images.tsv"
 : >"$tmp/expected-refs.txt"
 for values in "${values_files[@]}"; do
@@ -26,7 +34,7 @@ PATH="$tmp/bin:$PATH" FAKE_IMAGE_MAP="$tmp/images.tsv" FAKE_DOCKER_LOG="$tmp/doc
   "$ROOT/scripts/rgw-analysis-web/verify-public-images.sh" >/dev/null
 LC_ALL=C sort "$tmp/docker.log" >"$tmp/actual-refs.txt"
 cmp -s "$tmp/expected-refs.txt" "$tmp/actual-refs.txt" || {
-  echo "default public image verification did not inspect both active releases" >&2
+  echo "default public image verification did not inspect all active releases" >&2
   exit 1
 }
 

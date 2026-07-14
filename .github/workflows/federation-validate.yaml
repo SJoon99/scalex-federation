@@ -110,6 +110,7 @@ jobs:
             base_ref="$PUSH_BEFORE"
           fi
           VALIDATE_BASE_REF="$base_ref" ./scripts/validate.sh
+          ./tests/test-credential-bridge.sh
           ./scripts/rgw-analysis-web/verify-public-images.sh
           ./tests/contracts/test-script-boundaries.sh
           ./tests/contracts/test-release-contract.sh
@@ -123,6 +124,8 @@ jobs:
               scripts/rgw-analysis-web/observe-release.sh \
               scripts/rgw-analysis-web/verify-public-images.sh \
               scripts/lib/validate-release-schema.sh \
+              scripts/bootstrap-rgw-credentials.sh \
+              tests/test-credential-bridge.sh \
               tests/contracts/test-script-boundaries.sh \
               tests/ci/test-public-image-verification.sh \
               tests/runtime-observation/test-observe-release.sh \

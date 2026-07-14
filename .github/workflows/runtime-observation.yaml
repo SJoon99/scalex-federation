@@ -76,7 +76,6 @@ jobs:
           unset SCALEX_RELEASE_KUBECONFIG
           test -s "$kubeconfig"
           KUBECONFIG="$kubeconfig" ./scripts/rgw-analysis-web/observe-release.sh poc rgw-analysis-web
-          KUBECONFIG="$kubeconfig" ./scripts/rgw-analysis-web/observe-release.sh cuty rgw-analysis-web
 
       - name: Remove ephemeral kubeconfig
         if: always()

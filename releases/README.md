@@ -11,8 +11,11 @@
 - Karmada `PropagationPolicy`
 - Karmada `OverridePolicy`
 - 환경별 배포 설정
+- Feature chart가 렌더링하는 namespaced PVC/OBC 같은 application claim
 
-기능 source code와 Dockerfile은 두지 않는다. CNI, CSI, StorageClass 같은 Infra 리소스도 두지 않는다.
+기능 source code와 Dockerfile은 두지 않는다. CNI, CSI, StorageClass,
+CephObjectStore 같은 Infra capability도 두지 않는다. 반면 그 capability를
+소비하는 namespaced PVC/OBC는 feature release lifecycle에 포함할 수 있다.
 
 예상 형태:
 

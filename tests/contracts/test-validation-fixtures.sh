@@ -32,7 +32,12 @@ make_federation() {
   cp -R "$ROOT/bootstrap" "$ROOT/contracts" "$ROOT/releases" "$ROOT/scripts" "$target/"
   rm -rf "$target/releases"
   mkdir -p "$target/releases/poc"
-  cp -R "$ROOT/releases/cuty/rgw-analysis-web" "$target/releases/poc/"
+  cp -R "$ROOT/releases/poc/rgw-analysis-web" "$target/releases/poc/"
+  rm -f "$target/releases/poc/rgw-analysis-web/karmada/propagation/object-bucket-claim-to-b.yaml"
+  yq -i '
+    .spec.overrideRules[0].overriders.plaintext =
+      [.spec.overrideRules[0].overriders.plaintext[] | select(.path == "/spec/type")]
+  ' "$target/releases/poc/rgw-analysis-web/karmada/overrides/result-web-on-b.yaml"
   revision="$(git -C "$source" rev-parse HEAD)"
   cp "$ROOT/tests/fixtures/contracts/valid-release.yaml" "$target/releases/poc/rgw-analysis-web/release.yaml"
   cp "$ROOT/tests/fixtures/contracts/valid-values.yaml" "$target/releases/poc/rgw-analysis-web/values.yaml"
@@ -43,10 +48,6 @@ make_federation() {
     .images.flow.sourceRevision = strenv(REVISION) |
     .images.web.sourceRevision = strenv(REVISION)
   ' "$target/releases/poc/rgw-analysis-web/values.yaml"
-  find "$target/releases/poc/rgw-analysis-web/dependencies" \
-    "$target/releases/poc/rgw-analysis-web/karmada" -type f \
-    \( -name '*.yaml' -o -name '*.yml' \) -exec \
-    sed -i 's/scalex-cuty-rgw-analysis-web/scalex-rgw-analysis-web/g' {} +
 }
 
 expect_reject() {

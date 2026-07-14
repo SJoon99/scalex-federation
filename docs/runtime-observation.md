@@ -4,8 +4,8 @@
 또는 수동 실행으로 시작한다. job은 GitHub environment `scalex-release`, self-hosted
 labels `self-hosted`, `linux`, `scalex-management`와 environment secret
 `SCALEX_RELEASE_KUBECONFIG`를 요구한다.
-같은 보호 경계 안에서 legacy `poc/rgw-analysis-web`을 먼저 관찰하고 additive
-`cuty/rgw-analysis-web`을 이어서 관찰하며, 둘 중 하나라도 실패하면 job이 실패한다.
+같은 보호 경계 안에서 현재 active `poc/rgw-analysis-web` release를 관찰하며,
+하나라도 필요한 증거가 누락되면 job이 실패한다.
 `.github/actionlint.yaml`은 이 중 custom label인 `scalex-management` 하나만 선언하며
 workflow lint에서 runner-label 검사를 비활성화하지 않는다.
 
@@ -34,9 +34,9 @@ run body 전에 environment나 kubeconfig를 읽는 경로도 거부한다.
 확인한다. 기존 `scalex-feature-poc`에는 legacy scripts/runtime contract를 적용하고,
 tracked promotion 이후 `BellTigerLee/smurf-child`에는 실제 chart가 렌더링하는 단일
 `rgw-analysis-web-runtime` ConfigMap, component `runtime`, S3와 polling key contract를
-적용한다. 다른 renderer 또는 URL/path 조합은 추측하지 않고 실패한다. Fixture test는 workspace에
-Smurf child chart가 있으면 그 chart를 Helm render해 resource/image/runtime contract가
-관찰 fixture와 계속 일치하는지도 검사한다.
+적용한다. 다른 renderer 또는 URL/path 조합은 추측하지 않고 실패한다. Fixture test는
+repository 내부 synthetic Smurf chart를 Helm render해 resource/image/runtime contract도
+독립적으로 계속 검증한다.
 
 HTTP 완료 판정도 source-specific이다. Legacy POC는 heading과 함께 결과 `<dl>` 및
 Rows/sum/average field를 요구하고 waiting page를 거부한다. Smurf child는
