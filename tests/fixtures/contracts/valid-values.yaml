@@ -1,0 +1,40 @@
+releaseLabel: rgw-analysis-web
+s3:
+  endpointUrl: http://rgw.example.invalid
+  bucket: scalex-poc
+  region: scalex-poc
+  secretName: scalex-poc-rgw
+  inputKey: input/dataset.csv
+  resultPrefix: results/rgw-analysis-web
+  resultJsonKey: results/rgw-analysis-web/result.json
+  resultIndexKey: results/rgw-analysis-web/index.html
+  waitSeconds: 600
+  pollIntervalSeconds: 5
+  syncIntervalSeconds: 10
+storage:
+  endpointUrl: http://rgw.example.invalid
+  bucket: scalex-poc
+  region: scalex-poc
+  waitSeconds: 600
+  pollIntervalSeconds: 5
+images:
+  flow:
+    repository: ghcr.io/belltigerlee/smurf-child-flow
+    tag: sha-1111111111111111111111111111111111111111
+    digest: sha256:1111111111111111111111111111111111111111111111111111111111111111
+    pullPolicy: IfNotPresent
+    sourceRevision: "1111111111111111111111111111111111111111"
+  web:
+    repository: ghcr.io/belltigerlee/smurf-child-web
+    tag: sha-1111111111111111111111111111111111111111
+    digest: sha256:2222222222222222222222222222222222222222222222222222222222222222
+    pullPolicy: IfNotPresent
+    sourceRevision: "1111111111111111111111111111111111111111"
+resultWeb:
+  replicas: 1
+  service:
+    type: ClusterIP
+    annotations:
+      scalex.io/exposure: internal
+    port: 80
+    targetPort: 8080

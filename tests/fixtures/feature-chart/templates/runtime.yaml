@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rgw-analysis-web-runtime
+  labels:
+    scalex.io/release: rgw-analysis-web
+    scalex.io/component: runtime
+data:
+  S3_ENDPOINT_URL: {{ .Values.storage.endpointUrl | quote }}
+  S3_BUCKET: {{ .Values.storage.bucket | quote }}
+  AWS_DEFAULT_REGION: {{ .Values.storage.region | quote }}
+  S3_WAIT_SECONDS: {{ .Values.storage.waitSeconds | quote }}
+  S3_POLL_INTERVAL_SECONDS: {{ .Values.storage.pollIntervalSeconds | quote }}

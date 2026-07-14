@@ -1,0 +1,7 @@
+{
+  "apiVersion":"apps/v1",
+  "kind":"Deployment",
+  "metadata":{"name":"rgw-analysis-web-result-web","namespace":"scalex-rgw-analysis-web","generation":3},
+  "spec":{"replicas":1,"template":{"spec":{"containers":[{"name":"web","image":"__WEB_IMAGE__"},{"name":"result-sync","image":"__FLOW_IMAGE__"}]}}},
+  "status":{"observedGeneration":3,"replicas":1,"updatedReplicas":1,"availableReplicas":1,"unavailableReplicas":0}
+}

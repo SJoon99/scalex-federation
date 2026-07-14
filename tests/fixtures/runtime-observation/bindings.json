@@ -1,0 +1,11 @@
+{
+  "apiVersion": "work.karmada.io/v1alpha2",
+  "kind": "ResourceBindingList",
+  "items": [
+    {"apiVersion":"work.karmada.io/v1alpha2","kind":"ResourceBinding","metadata":{"name":"rgw-analysis-web-dataset-seeder-job","namespace":"scalex-rgw-analysis-web"},"spec":{"resource":{"apiVersion":"batch/v1","kind":"Job","namespace":"scalex-rgw-analysis-web","name":"rgw-analysis-web-dataset-seeder"},"clusters":[{"name":"b"}]},"status":{"aggregatedStatus":[{"clusterName":"b","applied":true,"health":"Healthy"}]}},
+    {"apiVersion":"work.karmada.io/v1alpha2","kind":"ResourceBinding","metadata":{"name":"rgw-analysis-web-analyzer-job","namespace":"scalex-rgw-analysis-web"},"spec":{"resource":{"apiVersion":"batch/v1","kind":"Job","namespace":"scalex-rgw-analysis-web","name":"rgw-analysis-web-analyzer"},"clusters":[{"name":"c"}]},"status":{"aggregatedStatus":[{"clusterName":"c","applied":true,"health":"Healthy"}]}},
+    {"apiVersion":"work.karmada.io/v1alpha2","kind":"ResourceBinding","metadata":{"name":"rgw-analysis-web-result-web-deployment","namespace":"scalex-rgw-analysis-web"},"spec":{"resource":{"apiVersion":"apps/v1","kind":"Deployment","namespace":"scalex-rgw-analysis-web","name":"rgw-analysis-web-result-web"},"clusters":[{"name":"b"}]},"status":{"aggregatedStatus":[{"clusterName":"b","applied":true,"health":"Healthy"}]}},
+    {"apiVersion":"work.karmada.io/v1alpha2","kind":"ResourceBinding","metadata":{"name":"rgw-analysis-web-result-web-service","namespace":"scalex-rgw-analysis-web"},"spec":{"resource":{"apiVersion":"v1","kind":"Service","namespace":"scalex-rgw-analysis-web","name":"rgw-analysis-web-result-web"},"clusters":[{"name":"b"}]},"status":{"aggregatedStatus":[{"clusterName":"b","applied":true,"health":"Healthy"}]}},
+    {"apiVersion":"work.karmada.io/v1alpha2","kind":"ResourceBinding","metadata":{"name":"rgw-analysis-web-rgw-externalsecret","namespace":"scalex-rgw-analysis-web"},"spec":{"resource":{"apiVersion":"external-secrets.io/v1beta1","kind":"ExternalSecret","namespace":"scalex-rgw-analysis-web","name":"rgw-analysis-web-rgw"},"clusters":[{"name":"b"},{"name":"c"}]},"status":{"aggregatedStatus":[{"clusterName":"b","applied":true,"health":"Healthy"},{"clusterName":"c","applied":true,"health":"Healthy"}]}}
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "apiVersion":"v1",
+  "kind":"ConfigMap",
+  "metadata":{"name":"rgw-analysis-web-runtime","namespace":"scalex-rgw-analysis-web","labels":{"scalex.io/release":"rgw-analysis-web","scalex.io/component":"runtime"}},
+  "data":{"S3_ENDPOINT_URL":"https://object-store.example.invalid","S3_BUCKET":"fixture-rgw-analysis","AWS_DEFAULT_REGION":"us-east-1","S3_WAIT_SECONDS":"30","S3_POLL_INTERVAL_SECONDS":"1"}
+}
