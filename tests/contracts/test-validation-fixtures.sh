@@ -33,11 +33,11 @@ make_federation() {
   rm -rf "$target/releases"
   mkdir -p "$target/releases/poc"
   cp -R "$ROOT/releases/poc/rgw-analysis-web" "$target/releases/poc/"
-  rm -f "$target/releases/poc/rgw-analysis-web/karmada/propagation/object-bucket-claim-to-b.yaml"
+  rm -f "$target/releases/poc/rgw-analysis-web/policy/propagation/object-bucket-claim-to-b.yaml"
   yq -i '
     .spec.overrideRules[0].overriders.plaintext =
       [.spec.overrideRules[0].overriders.plaintext[] | select(.path == "/spec/type")]
-  ' "$target/releases/poc/rgw-analysis-web/karmada/overrides/result-web-on-b.yaml"
+  ' "$target/releases/poc/rgw-analysis-web/policy/overrides/result-web-on-b.yaml"
   revision="$(git -C "$source" rev-parse HEAD)"
   cp "$ROOT/tests/fixtures/contracts/valid-release.yaml" "$target/releases/poc/rgw-analysis-web/release.yaml"
   cp "$ROOT/tests/fixtures/contracts/valid-values.yaml" "$target/releases/poc/rgw-analysis-web/values.yaml"
@@ -127,7 +127,7 @@ set_unapproved_pinned_repository() {
 }
 
 set_selector_mismatch() {
-  yq -i '.spec.resourceSelectors[0].name = "missing"' "$1/releases/poc/rgw-analysis-web/karmada/propagation/analyzer-to-c.yaml"
+  yq -i '.spec.resourceSelectors[0].name = "missing"' "$1/releases/poc/rgw-analysis-web/policy/propagation/analyzer-to-c.yaml"
 }
 
 set_empty_annotations() {
@@ -222,8 +222,8 @@ set_deployable_dependency() {
 }
 
 set_duplicate_policy() {
-  cp "$1/releases/poc/rgw-analysis-web/karmada/propagation/analyzer-to-c.yaml" \
-    "$1/releases/poc/rgw-analysis-web/karmada/propagation/analyzer-copy.yaml"
+  cp "$1/releases/poc/rgw-analysis-web/policy/propagation/analyzer-to-c.yaml" \
+    "$1/releases/poc/rgw-analysis-web/policy/propagation/analyzer-copy.yaml"
 }
 
 set_feature_policy() {
@@ -295,8 +295,8 @@ EOF
 }
 
 set_unsafe_image_override() {
-  cp "$1/releases/poc/rgw-analysis-web/karmada/overrides/runtime-on-b.yaml" \
-    "$1/releases/poc/rgw-analysis-web/karmada/overrides/unsafe-image.yaml"
+  cp "$1/releases/poc/rgw-analysis-web/policy/overrides/runtime-on-b.yaml" \
+    "$1/releases/poc/rgw-analysis-web/policy/overrides/unsafe-image.yaml"
   yq -i '
     .metadata.name = "rgw-analysis-web-unsafe-image" |
     .spec.resourceSelectors = [{
@@ -310,17 +310,17 @@ set_unsafe_image_override() {
       "operator": "replace",
       "value": "example.invalid/attacker:latest"
     }]
-  ' "$1/releases/poc/rgw-analysis-web/karmada/overrides/unsafe-image.yaml"
+  ' "$1/releases/poc/rgw-analysis-web/policy/overrides/unsafe-image.yaml"
 }
 
 set_malformed_policy_identity() {
   yq -i 'del(.apiVersion) | del(.metadata.name)' \
-    "$1/releases/poc/rgw-analysis-web/karmada/overrides/runtime-on-b.yaml"
+    "$1/releases/poc/rgw-analysis-web/policy/overrides/runtime-on-b.yaml"
 }
 
 set_wrong_analyzer_placement() {
   yq -i '.spec.placement.clusterAffinity.clusterNames = ["b"]' \
-    "$1/releases/poc/rgw-analysis-web/karmada/propagation/analyzer-to-c.yaml"
+    "$1/releases/poc/rgw-analysis-web/policy/propagation/analyzer-to-c.yaml"
 }
 
 set_submodule_source() {

@@ -98,7 +98,7 @@ _validate_release_descriptor() {
     contract_fail "values.path does not match release identity"
   [ "$dependencies_path" = "releases/$environment/$name/dependencies" ] ||
     contract_fail "dependencies.path does not match release identity"
-  [ "$policy_path" = "releases/$environment/$name/karmada" ] ||
+  [ "$policy_path" = "releases/$environment/$name/policy" ] ||
     contract_fail "policy.path does not match release identity"
   case "$promotion_mode" in
     tracked | pinned) ;;

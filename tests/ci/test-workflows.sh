@@ -35,8 +35,8 @@ for file in "$validate" "$observe"; do
   fi
 done
 
-yq e -e '.on.pull_request != null and .on.push.branches[0] == "main"' "$validate" >/dev/null ||
-  fail "validation must gate pull requests and main pushes"
+yq e -e '.on.workflow_dispatch != null and .on.pull_request == null and .on.push == null' \
+  "$validate" >/dev/null || fail "validation must remain manual while automatic CI is disabled"
 yq e -e '.permissions.contents == "read" and (.jobs | length) == 1' "$validate" >/dev/null ||
   fail "validation permissions must be read-only"
 grep -Fq 'scripts/validate.sh' "$validate" || fail "validation entry point is not executed"

@@ -31,7 +31,7 @@ b_endpoint="$(yq e -r -N '
   .overriders.plaintext[] |
   select(.path == "/data/S3_ENDPOINT_URL" and .operator == "replace") |
   .value
-' "$ROOT/releases/poc/rgw-analysis-web/karmada/overrides"/*.yaml | sed '/^[[:space:]]*$/d')"
+' "$ROOT/releases/poc/rgw-analysis-web/policy/overrides"/*.yaml | sed '/^[[:space:]]*$/d')"
 
 mkdir -p "$tmp/bin" "$tmp/fixtures"
 for fixture in "$fixture_root"/*.json "$fixture_root"/*.html; do
@@ -141,7 +141,7 @@ run_malformed_override_contract() {
   chmod +x "$federation/scripts/rgw-analysis-web/observe-release.sh"
   cp -R "$ROOT/releases/poc/rgw-analysis-web" "$federation/releases/poc/"
   printf '%s\n' 'apiVersion: [' > \
-    "$federation/releases/poc/rgw-analysis-web/karmada/overrides/malformed.yaml"
+    "$federation/releases/poc/rgw-analysis-web/policy/overrides/malformed.yaml"
   if PATH="$tmp/bin:$PATH" \
     FAKE_FIXTURE_ROOT="$tmp/fixtures" \
     FAKE_SCENARIO=healthy \

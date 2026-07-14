@@ -27,7 +27,7 @@ releases/
       ├─ values.yaml
       ├─ dependencies/
       │  └─ *.yaml
-      └─ karmada/
+      └─ policy/
          ├─ propagation/
          │  └─ *.yaml
          └─ overrides/
@@ -57,12 +57,12 @@ releases/
 ## Policy 적용 규칙
 
 ApplicationSet은 `policy.path`에 항상 `directory.recurse=true`를 적용한다.
-따라서 `karmada/` 아래의 `*.yaml`, `*.yml`은 별도 목록 파일 없이 모두
+따라서 `policy/` 아래의 `*.yaml`, `*.yml`은 별도 목록 파일 없이 모두
 Karmada API에 동기화된다.
 
-- `karmada/propagation/`: `PropagationPolicy`만 저장
-- `karmada/overrides/`: `OverridePolicy`만 저장
-- `karmada/`에는 `kustomization.yaml`, `Chart.yaml`, 일반 설정 YAML을 두지 않음
+- `policy/propagation/`: `PropagationPolicy`만 저장
+- `policy/overrides/`: `OverridePolicy`만 저장
+- `policy/`에는 `kustomization.yaml`, `Chart.yaml`, 일반 설정 YAML을 두지 않음
 - 설명 문서는 release root의 Markdown에 기록
 - 모든 policy는 release namespace를 사용
 

@@ -65,7 +65,7 @@ Tower Karmada API → member clusters
 revision, runtime values, placement와 override만 저장한다.
 
 ApplicationSet은 feature chart와 release `values.yaml`을 렌더링하고,
-`karmada/` 아래의 policy YAML을 재귀적으로 함께 읽는다. 별도 Kustomize
+`policy/` 아래의 Karmada policy YAML을 재귀적으로 함께 읽는다. 별도 Kustomize
 entrypoint나 기능별 Application 파일은 사용하지 않는다.
 
 ## CI promotion 경계

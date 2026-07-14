@@ -139,7 +139,7 @@ read_bindings() {
 
 expected_endpoint_for_context() {
   local context="$1"
-  local override_root="$RELEASE_DIR/karmada/overrides"
+  local override_root="$RELEASE_DIR/policy/overrides"
   local candidate_file="$tmp/endpoint-overrides-$context.txt"
   local -a override_files=()
   local -a candidates=()

@@ -12,7 +12,7 @@ Karmada manifest는 child에 넣지 않는다.
 4. `values.yaml`에는 CI가 발행한 component별 tag, digest, source revision을 한 번에
    기록한다. 실제 registry digest를 모르면 placeholder로 release를 만들지 않는다.
 5. 현재 RGW release의 `dependencies/`에는 배포 YAML을 두지 않는다. Runtime Secret은
-   승인된 bootstrap 경계에서 Karmada API에 준비하고 placement/override만 `karmada/`에 둔다.
+   승인된 bootstrap 경계에서 Karmada API에 준비하고 placement/override만 `policy/`에 둔다.
 6. feature repository checkout을 Federation의 sibling에 두고 검증한다.
 
 ```bash

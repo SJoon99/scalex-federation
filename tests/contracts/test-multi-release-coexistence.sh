@@ -214,7 +214,7 @@ add_second_release() {
     .namespace = "scalex-rgw-analysis-web-canary" |
     .values.path = "releases/canary/rgw-analysis-web/values.yaml" |
     .dependencies.path = "releases/canary/rgw-analysis-web/dependencies" |
-    .policy.path = "releases/canary/rgw-analysis-web/karmada"
+    .policy.path = "releases/canary/rgw-analysis-web/policy"
   ' "$release_root/release.yaml"
   REVISION="$revision" yq -i '.source.revision = strenv(REVISION)' "$release_root/release.yaml"
   yq -i '
@@ -226,12 +226,12 @@ add_second_release() {
     .images.flow.sourceRevision = strenv(REVISION) |
     .images.web.sourceRevision = strenv(REVISION)
   ' "$release_root/values.yaml"
-  rm -f "$release_root/karmada/propagation/object-bucket-claim-to-b.yaml"
+  rm -f "$release_root/policy/propagation/object-bucket-claim-to-b.yaml"
   yq -i '
     .spec.overrideRules[0].overriders.plaintext =
       [.spec.overrideRules[0].overriders.plaintext[] | select(.path == "/spec/type")]
-  ' "$release_root/karmada/overrides/result-web-on-b.yaml"
-  find "$release_root/karmada" -type f \( -name '*.yaml' -o -name '*.yml' \) -exec \
+  ' "$release_root/policy/overrides/result-web-on-b.yaml"
+  find "$release_root/policy" -type f \( -name '*.yaml' -o -name '*.yml' \) -exec \
     yq -i '
       .metadata.namespace = "scalex-rgw-analysis-web-canary" |
       .spec.resourceSelectors[].namespace = "scalex-rgw-analysis-web-canary"
@@ -239,7 +239,7 @@ add_second_release() {
   VALUE=10.33.142.21 yq -i '
     (.spec.overrideRules[0].overriders.plaintext[] |
       select(.path == "/metadata/annotations/lbipam.cilium.io~1ips").value) = strenv(VALUE)
-  ' "$release_root/karmada/overrides/result-web-on-b.yaml"
+  ' "$release_root/policy/overrides/result-web-on-b.yaml"
 }
 
 set_unexpected_release() {
@@ -293,7 +293,7 @@ set_duplicate_load_balancer_ip() {
   local legacy_ip canary_override candidate
   local -a legacy_ips
   mapfile -t legacy_ips < <(
-    find "$1/releases/poc/rgw-analysis-web/karmada" -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 |
+    find "$1/releases/poc/rgw-analysis-web/policy" -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 |
       LC_ALL=C sort -z |
       xargs -0 yq e -r -N '
         select(.kind == "OverridePolicy") |
@@ -318,7 +318,7 @@ set_duplicate_load_balancer_ip() {
       break
     fi
   done < <(
-    find "$1/releases/canary/rgw-analysis-web/karmada" -type f \
+    find "$1/releases/canary/rgw-analysis-web/policy" -type f \
       \( -name '*.yaml' -o -name '*.yml' \) | LC_ALL=C sort
   )
   test -n "$canary_override" || {

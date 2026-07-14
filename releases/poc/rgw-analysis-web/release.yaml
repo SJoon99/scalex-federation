@@ -13,6 +13,6 @@ values:
 dependencies:
   path: releases/poc/rgw-analysis-web/dependencies
 policy:
-  path: releases/poc/rgw-analysis-web/karmada
+  path: releases/poc/rgw-analysis-web/policy
 promotion:
   mode: pinned

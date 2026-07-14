@@ -1,6 +1,8 @@
 name: Federation Validation
 
 on:
+  # Automatic CI validation is temporarily disabled while the validation path
+  # is being shortened. Re-enable pull_request/push only after that work lands.
   pull_request: {}
   push:
     branches:

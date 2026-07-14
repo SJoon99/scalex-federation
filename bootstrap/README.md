@@ -9,7 +9,7 @@ Tower Argo CD가 Federation release를 발견하는 고정 진입점이다.
 Tower root Application은 이 디렉터리의 두 manifest를 plain directory로 읽는다.
 하위 manifest가 없으므로 bootstrap에는 재귀 탐색이 필요하지 않다.
 ApplicationSet은 각 release의 `policy.path`에 `directory.recurse=true`를
-적용하므로 `karmada/` 아래 Kubernetes YAML은 모두 배포 대상이다. 문서용
+적용하므로 `policy/` 아래 Kubernetes YAML은 모두 배포 대상이다. 문서용
 YAML이나 미완성 manifest는 이 경로에 두지 않는다.
 `dependencies.path`도 plain directory로 재귀 처리한다. 현재 RGW release의 dependency
 directory에는 배포 YAML이 없다. RGW credential은 승인된 bootstrap 경계에서
