@@ -2,6 +2,9 @@
 set -euo pipefail
 
 ref="${*: -1}"
+if [ -n "${FAKE_DOCKER_LOG:-}" ]; then
+  printf '%s\n' "$ref" >>"$FAKE_DOCKER_LOG"
+fi
 if [[ "$ref" == *@sha256:* ]]; then
   exit 0
 fi

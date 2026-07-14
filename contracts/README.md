@@ -14,16 +14,16 @@ Infra Layer, feature repository, Federation 사이에서 공통으로 지켜야 
 
 실제 workload manifest보다 경계와 규칙을 우선 기록한다.
 
-## POC contract
+## Release contract
 
 | 항목 | 규칙 |
 |---|---|
-| Namespace | release마다 `scalex-<release>` 전용 namespace 사용 |
+| Namespace | descriptor에 `scalex-` prefix namespace를 명시하고 모든 active release에서 유일하게 사용 |
 | Release label | `scalex.io/release=<release>` |
 | Component label | `scalex.io/component=<component>` |
 | Infra ownership | RGW/Ceph/LB pool은 `b-k8s`와 `eecs-k8s`가 소유 |
 | Workload ownership | Job/Deployment/Service는 Federation/Karmada가 소유 |
-| Secret | 값은 Git 금지, Federation 소유 `ExternalSecret`이 external store에서 생성 |
+| Secret | 값은 Git 금지. Smurf는 Federation 소유 `ExternalSecret`을 사용하고 legacy POC는 승인된 bootstrap 경계를 유지 |
 | Placement | `PropagationPolicy`에서만 member cluster 선택 |
 | Override | Federation workload만 대상, Infra resource 수정 금지 |
 | Chart pin | `release.yaml.source.revision`은 full Git commit SHA |
@@ -66,8 +66,9 @@ Argo 운영 경계이며 이 repository에 credential을 저장하지 않는다.
 
 ## RGW runtime credential reference
 
-`rgw-analysis-web`은 `ExternalSecret/rgw-analysis-web-rgw`만 소유한다. 이 resource는
-각 대상 cluster에 이미 운영자가 제공한 `SecretStore/scalex-poc-rgw-analysis-web`을
-참조하고 external key `scalex/poc/rgw-analysis-web/rgw`에서 target
-`Secret/scalex-poc-rgw`를 만든다. Git에는 external key 이름과 resource identity만
-기록하며 credential 값이나 kubeconfig를 저장하지 않고 cluster mutation을 실행하지 않는다.
+Smurf source contract의 `rgw-analysis-web`은 release namespace 안의
+`ExternalSecret/rgw-analysis-web-rgw` 하나를 소유한다. Store는 descriptor namespace,
+external key는 `scalex/<environment>/<release>/rgw`, target Secret은 release values의
+`credentials.existingSecret`과 정확히 일치해야 한다. Legacy POC의 dependency directory에는
+배포 YAML을 두지 않으며 기존의 명시적 credential bootstrap 경계를 유지한다. 어느 경로도
+credential 값이나 kubeconfig를 Git에 저장하지 않는다.

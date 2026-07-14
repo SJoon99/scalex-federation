@@ -62,6 +62,16 @@ if [ "$flow_key" = flow ]; then
     ' "$fixture_root/configmap-runtime-smurf.json" > "$tmp/fixtures/configmap-runtime.json"
   sed "s|run-20260714-001|$run_id|g" \
     "$fixture_root/result-smurf-success.html" > "$tmp/fixtures/result.html"
+else
+  jq \
+    --arg endpoint "$(yq e -r '.s3.endpointUrl' "$ROOT/releases/poc/rgw-analysis-web/values.yaml")" \
+    --arg bucket "$(yq e -r '.s3.bucket' "$ROOT/releases/poc/rgw-analysis-web/values.yaml")" \
+    --arg region "$(yq e -r '.s3.region' "$ROOT/releases/poc/rgw-analysis-web/values.yaml")" '
+      .data.S3_ENDPOINT_URL = $endpoint |
+      .data.S3_BUCKET = $bucket |
+      .data.AWS_DEFAULT_REGION = $region
+    ' "$tmp/fixtures/configmap-runtime.json" > "$tmp/fixtures/configmap-runtime.updated.json"
+  mv "$tmp/fixtures/configmap-runtime.updated.json" "$tmp/fixtures/configmap-runtime.json"
 fi
 
 cp "$fixture_root/fake-kubectl.sh" "$tmp/bin/kubectl"
@@ -106,8 +116,6 @@ run_case wrong-image fail
 run_case not-ready fail
 run_case unreachable fail
 run_case wrong-object fail
-run_case wrong-api-version fail
-run_case wrong-kind fail
 run_case wrong-name fail
 run_case wrong-namespace fail
 run_case wrong-list-identity fail
@@ -144,18 +152,45 @@ run_malformed_override_contract() {
 
 run_malformed_override_contract
 
+run_unsupported_source_path_contract() {
+  local federation="$tmp/unsupported-source-path-federation"
+  mkdir -p "$federation/scripts/rgw-analysis-web" "$federation/releases/poc"
+  cp "$observer" "$federation/scripts/rgw-analysis-web/observe-release.sh"
+  chmod +x "$federation/scripts/rgw-analysis-web/observe-release.sh"
+  cp -R "$ROOT/releases/poc/rgw-analysis-web" "$federation/releases/poc/"
+  yq -i '.source.path = "charts/rgw-analysis-web"' \
+    "$federation/releases/poc/rgw-analysis-web/release.yaml"
+  if PATH="$tmp/bin:$PATH" \
+    FAKE_FIXTURE_ROOT="$tmp/fixtures" \
+    FAKE_SCENARIO=healthy \
+    REAL_YQ="$real_yq" \
+    OBSERVE_ATTEMPTS=1 \
+    OBSERVE_INTERVAL_SECONDS=0 \
+    "$federation/scripts/rgw-analysis-web/observe-release.sh" poc rgw-analysis-web \
+    >"$tmp/unsupported-source-path.log" 2>&1; then
+    echo "unsupported source URL/path unexpectedly passed runtime observation" >&2
+    exit 1
+  fi
+  grep -Fq 'unsupported RGW source contract' "$tmp/unsupported-source-path.log"
+}
+
+run_unsupported_source_path_contract
+
 run_smurf_contract() {
   local federation="$tmp/smurf-federation"
   local fixtures="$tmp/smurf-fixtures"
   local source_root
   local smurf_child
   local exact_smurf_child="$tmp/exact-smurf-child"
-  local values="$fixture_root/values-smurf.yaml"
-  local active_revision revision flow_image web_image
+  local values="$ROOT/releases/cuty/rgw-analysis-web/values.yaml"
+  local descriptor="$ROOT/releases/cuty/rgw-analysis-web/release.yaml"
+  local active_revision revision flow_image web_image namespace run_id
   source_root="${FEATURE_REPOS_ROOT:-$(dirname "$ROOT")}";
   smurf_child="${SMURF_CHILD_ROOT:-$source_root/smurf-child}"
-  active_revision="$(yq e -r '.source.revision' "$ROOT/releases/poc/rgw-analysis-web/release.yaml")"
-  revision="$(yq e -r '.source.revision' "$fixture_root/release-smurf.yaml")"
+  active_revision="$(yq e -r '.source.revision' "$descriptor")"
+  revision="$active_revision"
+  namespace="$(yq e -r '.namespace' "$descriptor")"
+  run_id="$(yq e -r '.runId' "$values")"
   flow_image="$(yq e -r '.images.flow.repository + ":" + .images.flow.tag + "@" + .images.flow.digest' "$values")"
   web_image="$(yq e -r '.images.web.repository + ":" + .images.web.tag + "@" + .images.web.digest' "$values")"
 
@@ -187,27 +222,40 @@ run_smurf_contract() {
     exit 1
   }
 
-  mkdir -p "$federation/scripts/rgw-analysis-web" "$federation/releases/poc/rgw-analysis-web" "$fixtures"
+  mkdir -p "$federation/scripts/rgw-analysis-web" "$federation/releases/cuty" "$fixtures"
   cp "$observer" "$federation/scripts/rgw-analysis-web/observe-release.sh"
   chmod +x "$federation/scripts/rgw-analysis-web/observe-release.sh"
-  cp "$fixture_root/release-smurf.yaml" "$federation/releases/poc/rgw-analysis-web/release.yaml"
-  cp "$values" "$federation/releases/poc/rgw-analysis-web/values.yaml"
+  cp -R "$ROOT/releases/cuty/rgw-analysis-web" "$federation/releases/cuty/"
 
   for fixture in bindings.json deployment.json external-secret.json job-analyzer.json job-seeder.json service.json; do
     sed \
       -e "s|__REVISION__|$revision|g" \
       -e "s|__FLOW_IMAGE__|$flow_image|g" \
       -e "s|__WEB_IMAGE__|$web_image|g" \
-      "$fixture_root/$fixture" > "$fixtures/$fixture"
+      "$fixture_root/$fixture" |
+      sed "s/scalex-rgw-analysis-web/$namespace/g" > "$fixtures/$fixture"
   done
-  cp "$fixture_root/configmap-runtime-smurf.json" "$fixtures/configmap-runtime.json"
+  jq \
+    --arg namespace "$namespace" \
+    --arg endpoint "$(yq e -r '.storage.endpointUrl' "$values")" \
+    --arg bucket "$(yq e -r '.storage.bucket' "$values")" \
+    --arg region "$(yq e -r '.storage.region' "$values")" \
+    --arg wait_seconds "$(yq e -r '.storage.waitSeconds' "$values")" \
+    --arg poll_seconds "$(yq e -r '.storage.pollIntervalSeconds' "$values")" '
+      .metadata.namespace = $namespace |
+      .data.S3_ENDPOINT_URL = $endpoint |
+      .data.S3_BUCKET = $bucket |
+      .data.AWS_DEFAULT_REGION = $region |
+      .data.S3_WAIT_SECONDS = $wait_seconds |
+      .data.S3_POLL_INTERVAL_SECONDS = $poll_seconds
+    ' "$fixture_root/configmap-runtime-smurf.json" > "$fixtures/configmap-runtime.json"
 
   command -v helm >/dev/null 2>&1 || {
     echo "helm is required to verify the current Smurf child chart" >&2
     exit 1
   }
   helm template rgw-analysis-web "$smurf_child/charts/rgw-analysis-web" \
-    --namespace scalex-rgw-analysis-web -f "$values" > "$tmp/smurf-render.yaml"
+    --namespace "$namespace" -f "$values" > "$tmp/smurf-render.yaml"
   yq e -e '
     select(.kind == "ConfigMap" and .metadata.name == "rgw-analysis-web-runtime") |
     .metadata.labels["scalex.io/component"] == "runtime" and
@@ -242,14 +290,33 @@ run_smurf_contract() {
   local loading_page="$smurf_child/src/rgw-analysis-web/web/fixtures/loading.html"
   local success_page="$smurf_child/src/rgw-analysis-web/web/fixtures/success.html"
 
+  local scenario
+  for scenario in wrong-api-version wrong-kind; do
+    cp "$success_page" "$fixtures/result.html"
+    if PATH="$tmp/bin:$PATH" \
+      FAKE_FIXTURE_ROOT="$fixtures" \
+      FAKE_SCENARIO="$scenario" \
+      EXPECTED_B_ENDPOINT="$b_endpoint" \
+      REAL_YQ="$real_yq" \
+      OBSERVE_ATTEMPTS=1 \
+      OBSERVE_INTERVAL_SECONDS=0 \
+      "$federation/scripts/rgw-analysis-web/observe-release.sh" cuty rgw-analysis-web \
+      >"$tmp/smurf-$scenario.log" 2>&1; then
+      echo "Smurf child ExternalSecret scenario unexpectedly passed: $scenario" >&2
+      exit 1
+    fi
+    grep -Fq 'runtime observation failed' "$tmp/smurf-$scenario.log"
+  done
+
   cp "$loading_page" "$fixtures/result.html"
   if PATH="$tmp/bin:$PATH" \
     FAKE_FIXTURE_ROOT="$fixtures" \
     FAKE_SCENARIO=smurf-child \
+    EXPECTED_B_ENDPOINT="$b_endpoint" \
     REAL_YQ="$real_yq" \
     OBSERVE_ATTEMPTS=1 \
     OBSERVE_INTERVAL_SECONDS=0 \
-    "$federation/scripts/rgw-analysis-web/observe-release.sh" poc rgw-analysis-web \
+    "$federation/scripts/rgw-analysis-web/observe-release.sh" cuty rgw-analysis-web \
     >"$tmp/smurf-loading.log" 2>&1; then
     echo "Smurf child loading page unexpectedly passed runtime observation" >&2
     exit 1
@@ -261,23 +328,25 @@ run_smurf_contract() {
   if PATH="$tmp/bin:$PATH" \
     FAKE_FIXTURE_ROOT="$fixtures" \
     FAKE_SCENARIO=smurf-child \
+    EXPECTED_B_ENDPOINT="$b_endpoint" \
     REAL_YQ="$real_yq" \
     OBSERVE_ATTEMPTS=1 \
     OBSERVE_INTERVAL_SECONDS=0 \
-    "$federation/scripts/rgw-analysis-web/observe-release.sh" poc rgw-analysis-web \
+    "$federation/scripts/rgw-analysis-web/observe-release.sh" cuty rgw-analysis-web \
     >"$tmp/smurf-wrong-run.log" 2>&1; then
     echo "Smurf child success page with the wrong run ID unexpectedly passed" >&2
     exit 1
   fi
 
-  cp "$success_page" "$fixtures/result.html"
+  sed "s/run-20260714-001/$run_id/" "$success_page" > "$fixtures/result.html"
   PATH="$tmp/bin:$PATH" \
     FAKE_FIXTURE_ROOT="$fixtures" \
     FAKE_SCENARIO=smurf-child \
+    EXPECTED_B_ENDPOINT="$b_endpoint" \
     REAL_YQ="$real_yq" \
     OBSERVE_ATTEMPTS=1 \
     OBSERVE_INTERVAL_SECONDS=0 \
-    "$federation/scripts/rgw-analysis-web/observe-release.sh" poc rgw-analysis-web \
+    "$federation/scripts/rgw-analysis-web/observe-release.sh" cuty rgw-analysis-web \
     >"$tmp/smurf-child.log" 2>&1 || {
       cat "$tmp/smurf-child.log" >&2
       exit 1

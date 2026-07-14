@@ -82,7 +82,8 @@ _validate_release_descriptor() {
   [ "$environment" = "$expected_environment" ] || contract_fail "release environment must match its directory"
   [[ "$name" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || contract_fail "invalid release name"
   [[ "$environment" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || contract_fail "invalid environment"
-  [ "$namespace" = "scalex-$name" ] || contract_fail "release namespace must be scalex-$name"
+  [[ "$namespace" =~ ^scalex-[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] ||
+    contract_fail "release namespace must be a scalex-prefixed DNS label"
   [ "$renderer" = helm/v1 ] || contract_fail "unsupported renderer: $renderer"
   [[ "$repo_url" =~ ^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\.git$ ]] ||
     contract_fail "source.repoURL must be an exact HTTPS GitHub URL"

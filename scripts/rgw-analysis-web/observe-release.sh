@@ -10,7 +10,6 @@ OBSERVE_ATTEMPTS="${OBSERVE_ATTEMPTS:-30}"
 OBSERVE_INTERVAL_SECONDS="${OBSERVE_INTERVAL_SECONDS:-10}"
 KUBECTL="${KUBECTL:-kubectl}"
 CURL_BIN="${CURL_BIN:-curl}"
-NAMESPACE="scalex-$RELEASE"
 RELEASE_DIR="$ROOT/releases/$ENVIRONMENT/$RELEASE"
 DESCRIPTOR="$RELEASE_DIR/release.yaml"
 VALUES="$RELEASE_DIR/values.yaml"
@@ -36,15 +35,23 @@ done
 test -f "$DESCRIPTOR" || fail "release descriptor not found"
 test -f "$VALUES" || fail "release values not found"
 
+descriptor_environment="$(yq e -r '.environment' "$DESCRIPTOR")"
+descriptor_name="$(yq e -r '.name' "$DESCRIPTOR")"
+[ "$descriptor_environment" = "$ENVIRONMENT" ] || fail "release descriptor environment does not match its directory"
+[ "$descriptor_name" = "$RELEASE" ] || fail "release descriptor name does not match its directory"
+NAMESPACE="$(yq e -r '.namespace' "$DESCRIPTOR")"
+[[ "$NAMESPACE" =~ ^scalex-[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || fail "release namespace is invalid"
+
 expected_revision="$(yq e -r '.source.revision' "$DESCRIPTOR")"
 [[ "$expected_revision" =~ ^[0-9a-f]{40}$ ]] || fail "release revision is not immutable"
 renderer="$(yq e -r '.renderer' "$DESCRIPTOR")"
 [ "$renderer" = helm/v1 ] || fail "runtime observer supports only helm/v1 releases"
 source_repository="$(yq e -r '.source.repoURL' "$DESCRIPTOR")"
-case "$source_repository" in
-  https://github.com/BellTigerLee/smurf-child.git) source_contract=smurf-child ;;
-  https://github.com/SJoon99/scalex-feature-poc.git) source_contract=legacy-poc ;;
-  *) fail "unsupported rgw-analysis-web source contract: $source_repository" ;;
+source_path="$(yq e -r '.source.path' "$DESCRIPTOR")"
+case "$source_repository|$source_path" in
+  https://github.com/BellTigerLee/smurf-child.git\|charts/rgw-analysis-web) source_contract=smurf-child ;;
+  https://github.com/SJoon99/scalex-feature-poc.git\|chart) source_contract=legacy-poc ;;
+  *) fail "unsupported RGW source contract: $source_repository/$source_path" ;;
 esac
 expected_run_id=""
 if [ "$source_contract" = smurf-child ]; then
@@ -157,7 +164,7 @@ expected_endpoint_for_context() {
 
 check_bindings() {
   local file="$1"
-  jq -e --arg namespace "$NAMESPACE" '
+  jq -e --arg namespace "$NAMESPACE" --arg profile "$source_contract" '
     def applied($clusters):
       ([.status.aggregatedStatus[]? |
         select(.applied == true) | .clusterName] | sort) == ($clusters | sort);
@@ -173,7 +180,9 @@ check_bindings() {
     placed("batch/v1"; "Job"; "rgw-analysis-web-analyzer"; ["c"]) and
     placed("apps/v1"; "Deployment"; "rgw-analysis-web-result-web"; ["b"]) and
     placed("v1"; "Service"; "rgw-analysis-web-result-web"; ["b"]) and
-    placed("external-secrets.io/v1beta1"; "ExternalSecret"; "rgw-analysis-web-rgw"; ["b", "c"])
+    (if $profile == "smurf-child" then
+      placed("external-secrets.io/v1beta1"; "ExternalSecret"; "rgw-analysis-web-rgw"; ["b", "c"])
+     else true end)
   ' "$file" >/dev/null || {
     LAST_ERROR="Karmada placement is missing, partial, or not fully applied"
     return 1
@@ -335,11 +344,12 @@ check_once() {
 
   local context
   for context in b c; do
-    read_object "$context" "$NAMESPACE" externalsecrets.external-secrets.io \
-      rgw-analysis-web-rgw external-secrets.io/v1beta1 ExternalSecret \
-      "$tmp/external-secret-$context.json" || return 1
-    check_external_secret "$tmp/external-secret-$context.json" || return 1
-    if [ "$source_contract" = legacy-poc ]; then
+    if [ "$source_contract" = smurf-child ]; then
+      read_object "$context" "$NAMESPACE" externalsecrets.external-secrets.io \
+        rgw-analysis-web-rgw external-secrets.io/v1beta1 ExternalSecret \
+        "$tmp/external-secret-$context.json" || return 1
+      check_external_secret "$tmp/external-secret-$context.json" || return 1
+    else
       read_object "$context" "$NAMESPACE" configmaps rgw-analysis-web-scripts \
         v1 ConfigMap "$tmp/scripts-$context.json" || return 1
       check_configmap "$tmp/scripts-$context.json" scripts || return 1

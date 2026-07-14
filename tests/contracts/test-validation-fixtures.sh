@@ -30,6 +30,9 @@ make_federation() {
   local revision
   mkdir -p "$target"
   cp -R "$ROOT/bootstrap" "$ROOT/contracts" "$ROOT/releases" "$ROOT/scripts" "$target/"
+  rm -rf "$target/releases"
+  mkdir -p "$target/releases/poc"
+  cp -R "$ROOT/releases/cuty/rgw-analysis-web" "$target/releases/poc/"
   revision="$(git -C "$source" rev-parse HEAD)"
   cp "$ROOT/tests/fixtures/contracts/valid-release.yaml" "$target/releases/poc/rgw-analysis-web/release.yaml"
   cp "$ROOT/tests/fixtures/contracts/valid-values.yaml" "$target/releases/poc/rgw-analysis-web/values.yaml"
@@ -40,6 +43,10 @@ make_federation() {
     .images.flow.sourceRevision = strenv(REVISION) |
     .images.web.sourceRevision = strenv(REVISION)
   ' "$target/releases/poc/rgw-analysis-web/values.yaml"
+  find "$target/releases/poc/rgw-analysis-web/dependencies" \
+    "$target/releases/poc/rgw-analysis-web/karmada" -type f \
+    \( -name '*.yaml' -o -name '*.yml' \) -exec \
+    sed -i 's/scalex-cuty-rgw-analysis-web/scalex-rgw-analysis-web/g; s#scalex/cuty/rgw-analysis-web/rgw#scalex/poc/rgw-analysis-web/rgw#g; s/scalex-cuty-rgw/scalex-poc-rgw/g' {} +
 }
 
 expect_reject() {
@@ -73,10 +80,6 @@ set_invalid_namespace_shape() {
 
 set_invalid_chart_path_shape() {
   yq -i '.source.path = "deploy/rgw-analysis-web"' "$1/releases/poc/rgw-analysis-web/release.yaml"
-}
-
-set_cross_field_namespace() {
-  yq -i '.namespace = "scalex-another-release"' "$1/releases/poc/rgw-analysis-web/release.yaml"
 }
 
 set_cross_field_values_path() {
@@ -186,6 +189,11 @@ set_policy_source_repository_mismatch() {
 
 set_dependency_source_repository_mismatch() {
   yq -i '.spec.template.spec.sources[2].repoURL = "https://github.com/example/other.git"' \
+    "$1/bootstrap/applicationset.yaml"
+}
+
+set_application_name_template_mismatch() {
+  yq -i '.spec.template.metadata.name = "federation-{{ .name }}"' \
     "$1/bootstrap/applicationset.yaml"
 }
 
@@ -329,6 +337,12 @@ if ! FEATURE_REPOS_ROOT="$(dirname "$source")" "$federation/scripts/validate.sh"
   exit 1
 fi
 grep -Fq 'federation validation passed' "$tmp/pass.log"
+set_dirty_source "$federation" "$source"
+if ! FEATURE_REPOS_ROOT="$(dirname "$source")" "$federation/scripts/validate.sh" >"$tmp/dirty-source-pass.log" 2>&1; then
+  cat "$tmp/dirty-source-pass.log" >&2
+  exit 1
+fi
+grep -Fq 'federation validation passed' "$tmp/dirty-source-pass.log"
 
 manual_source="$tmp/manual-pass-sources/smurf-child"
 manual_federation="$tmp/manual-pass-federation"
@@ -345,23 +359,21 @@ grep -Fq 'federation validation passed' "$tmp/manual-pass.log"
 expect_reject unknown-field 'release schema validation failed' set_unknown_field
 expect_reject invalid-namespace-shape 'release schema validation failed' set_invalid_namespace_shape
 expect_reject invalid-chart-path-shape 'release schema validation failed' set_invalid_chart_path_shape
-expect_reject cross-field-namespace 'release namespace must be scalex-rgw-analysis-web' set_cross_field_namespace
 expect_reject cross-field-values-path 'values.path does not match release identity' set_cross_field_values_path
 expect_reject mutable-tag 'image tag must be explicit and non-latest' set_mutable_tag
 expect_reject stale-revision 'image sourceRevision is stale' set_stale_revision
 expect_reject missing-digest 'image digest is not immutable' set_missing_digest
 expect_reject tracked-manual-repository 'unexpected tracked Smurf image repository' set_tracked_manual_repository
 expect_reject unapproved-pinned-repository 'unexpected pinned Smurf image repository' set_unapproved_pinned_repository
-expect_reject selector-mismatch 'invalid RGW propagation policy allowlist' set_selector_mismatch
+expect_reject selector-mismatch 'invalid smurf-child RGW propagation policy contract' set_selector_mismatch
 expect_reject service-selector-mismatch 'workload labels or Service selectors do not match' set_service_selector_mismatch
 expect_reject hardcoded-rendered-image 'rendered images do not exactly match release values' set_hardcoded_rendered_image
 expect_reject unplaced-workload 'rendered workload must have exactly one propagation selector' set_unplaced_workload
 expect_reject unplaced-service 'rendered workload must have exactly one propagation selector' set_unplaced_service
-expect_reject unsafe-image-override 'invalid RGW override policy allowlist' set_unsafe_image_override
+expect_reject unsafe-image-override 'invalid smurf-child RGW override policy contract' set_unsafe_image_override
 expect_reject malformed-policy-identity 'invalid Karmada policy structure' set_malformed_policy_identity
-expect_reject wrong-analyzer-placement 'invalid RGW propagation policy allowlist' set_wrong_analyzer_placement
+expect_reject wrong-analyzer-placement 'invalid smurf-child RGW propagation policy contract' set_wrong_analyzer_placement
 expect_reject empty-annotations 'base Services must be annotated ClusterIP resources' set_empty_annotations
-expect_reject dirty-source 'feature repository working tree is dirty' set_dirty_source
 expect_reject symlink-source 'chart tree contains a symlink or submodule' set_symlink_source
 expect_reject submodule-source 'chart tree contains a symlink or submodule' set_submodule_source
 expect_reject origin-mismatch 'feature origin does not match enrollment' set_origin_mismatch
@@ -375,7 +387,8 @@ expect_reject generator-repository-mismatch 'ApplicationSet generator must exact
 expect_reject generator-path-mismatch 'ApplicationSet generator must exactly discover Federation releases' set_generator_path_mismatch
 expect_reject policy-source-repository-mismatch 'ApplicationSet sources must exactly match the v1 Helm release contract' set_policy_source_repository_mismatch
 expect_reject dependency-source-repository-mismatch 'ApplicationSet sources must exactly match the v1 Helm release contract' set_dependency_source_repository_mismatch
-expect_reject duplicate-policy 'invalid RGW propagation policy allowlist' set_duplicate_policy
+expect_reject application-name-template-mismatch 'ApplicationSet name template must include environment and release' set_application_name_template_mismatch
+expect_reject duplicate-policy 'invalid smurf-child RGW propagation policy contract' set_duplicate_policy
 expect_reject forbidden-secret 'feature chart renders a forbidden or cluster-specific resource' set_forbidden_secret
 expect_reject feature-policy 'feature chart renders a forbidden or cluster-specific resource' set_feature_policy
 expect_reject cluster-resource 'feature chart renders a forbidden or cluster-specific resource' set_cluster_resource

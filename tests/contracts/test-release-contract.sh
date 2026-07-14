@@ -120,8 +120,12 @@ expect_schema_reject zero-revision set_zero_revision
 expect_schema_reject traversal-path set_traversal_path
 expect_schema_reject unknown-promotion set_bad_promotion
 expect_schema_accept_semantic_reject directory-identity set_bad_identity
-expect_schema_accept_semantic_reject namespace-identity set_cross_field_namespace
 expect_schema_accept_semantic_reject values-path-identity set_cross_field_values_path
+
+cp "$ROOT/tests/fixtures/contracts/valid-release.yaml" "$tmp/independent-namespace.yaml"
+set_cross_field_namespace "$tmp/independent-namespace.yaml"
+"$SCHEMA_VALIDATOR" "$tmp/independent-namespace.yaml"
+validate_release_descriptor "$tmp/independent-namespace.yaml" "poc" "rgw-analysis-web"
 
 expect_reject unknown-field add_unknown_field
 expect_reject unknown-renderer set_unknown_renderer

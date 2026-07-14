@@ -14,10 +14,15 @@
 - `validate.sh`: standards-compliant JSON Schema가 적용된 strict v1alpha1 descriptor,
   exact child enrollment/origin,
   pinned Helm chart, recursive dependency/policy와 multi-image digest contract 검증
-- `rgw-analysis-web/validate-dependencies.sh`: ESO `ExternalSecret` reference identity와
-  credential payload 부재 검증
-- RGW runtime credential은 release의 `ExternalSecret` reference 계약으로만
-  선언한다. 검증 script는 cluster나 external store에 쓰지 않는다.
+- `rgw-analysis-web/validate-dependencies.sh`: Smurf source contract의 ESO
+  `ExternalSecret` identity를 descriptor namespace/environment와 values의 target
+  Secret reference에서 계산해 검증
+- Legacy POC dependency path는 deployable YAML 없이 기존 승인된 bootstrap 경계를
+  유지하고 Smurf dependency path만 `ExternalSecret`을 선언한다. 검증 script는
+  cluster나 external store에 쓰지 않는다.
+- `rgw-analysis-web/verify-public-images.sh`: 인자 없이 실행하면 모든 active release
+  descriptor의 values를 읽어 tag와 digest manifest를 확인한다. 특정 values path를
+  인자로 전달하면 그 release들만 검사한다.
 
 `validate.sh`는 chart repository가 `scalex-federation`과 같은 상위 디렉터리
 아래에 checkout되어 있다고 가정한다. CI workspace가 다르면

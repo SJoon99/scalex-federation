@@ -1,36 +1,35 @@
-runId: poc-rgw-analysis-web
+releaseLabel: rgw-analysis-web
 
-resultSync:
-  intervalSeconds: 10
-
-storage:
+s3:
   endpointUrl: http://10.33.142.10
   bucket: scalex-poc
   region: scalex-poc
+  secretName: scalex-poc-rgw
+  inputKey: input/dataset.csv
+  resultPrefix: results/rgw-analysis-web
+  resultJsonKey: results/rgw-analysis-web/result.json
+  resultIndexKey: results/rgw-analysis-web/index.html
   waitSeconds: 600
   pollIntervalSeconds: 5
-
-credentials:
-  existingSecret: scalex-poc-rgw
-  accessKeyIdKey: access-key-id
-  secretAccessKeyKey: secret-access-key
-  sessionTokenKey: session-token
+  syncIntervalSeconds: 10
 
 images:
-  flow:
-    repository: belltigerlee/test-image-flow
-    tag: sha-05e2de4a0963a2373588a999c415e14b6648febc
-    digest: sha256:6bb09aa292213b59f5235f16e25138765a411d4727c7078747a159d9faeff001
-    sourceRevision: 05e2de4a0963a2373588a999c415e14b6648febc
+  awsCli:
+    repository: public.ecr.aws/aws-cli/aws-cli
+    tag: "2.17.57"
+    digest: sha256:603e86d34bbbba57bb1dfe1cc2ac5ef6eef0df1e0d0b953ee9b83a0f6cac3d59
     pullPolicy: IfNotPresent
-  web:
-    repository: belltigerlee/test-image-web
-    tag: sha-05e2de4a0963a2373588a999c415e14b6648febc
-    digest: sha256:756bc5a1c6030c1b92086eaa6fafa60f26d47ce2018652ab983f0f3388f87e7e
-    sourceRevision: 05e2de4a0963a2373588a999c415e14b6648febc
+  nginx:
+    repository: nginx
+    tag: "1.27.3-alpine"
+    digest: sha256:814a8e88df978ade80e584cc5b333144b9372a8e3c98872d07137dbf3b44d0e4
     pullPolicy: IfNotPresent
 
-service:
-  port: 80
-  annotations:
-    scalex.io/exposure: internal
+resultWeb:
+  replicas: 1
+  service:
+    type: ClusterIP
+    annotations:
+      scalex.io/exposure: internal
+    port: 80
+    targetPort: 8080

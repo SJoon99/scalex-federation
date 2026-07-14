@@ -104,6 +104,9 @@ yq e -e '
   select(.path == "{{ .source.path }}") |
   .helm.valueFiles[] == "$federation/{{ .values.path }}"
 ' "$ROOT/bootstrap/applicationset.yaml" >/dev/null || fail "Helm source does not match v1 descriptor"
+yq e -e '.spec.template.metadata.name == "federation-{{ .environment }}-{{ .name }}"' \
+  "$ROOT/bootstrap/applicationset.yaml" >/dev/null ||
+  fail "ApplicationSet name template must include environment and release"
 yq e -e '
   .spec.namespaceResourceWhitelist[] |
   select(.group == "external-secrets.io" and .kind == "ExternalSecret")
@@ -156,6 +159,42 @@ if [ -n "$VALIDATE_BASE_REF" ]; then
     fail "validation base ref is not a commit: $VALIDATE_BASE_REF"
 fi
 
+: >"$tmp/application-identities.txt"
+: >"$tmp/release-namespaces.txt"
+: >"$tmp/rendered-identities.txt"
+: >"$tmp/external-secret-targets.txt"
+: >"$tmp/load-balancer-ip-claims.txt"
+
+for descriptor in "${descriptors[@]}"; do
+  release_dir="$(dirname "$descriptor")"
+  expected_environment="$(basename "$(dirname "$release_dir")")"
+  expected_name="$(basename "$release_dir")"
+  validate_release_descriptor "$descriptor" "$expected_environment" "$expected_name"
+  environment="$(yq e -r '.environment' "$descriptor")"
+  name="$(yq e -r '.name' "$descriptor")"
+  namespace="$(yq e -r '.namespace' "$descriptor")"
+  policy_rel="$(yq e -r '.policy.path' "$descriptor")"
+  printf 'federation-%s-%s\n' "$environment" "$name" >>"$tmp/application-identities.txt"
+  printf '%s\n' "$namespace" >>"$tmp/release-namespaces.txt"
+  if [ -d "$ROOT/$policy_rel" ]; then
+    mapfile -t preflight_policy_files < <(
+      find "$ROOT/$policy_rel" -type f \( -name '*.yaml' -o -name '*.yml' \) | sort
+    )
+    if [ "${#preflight_policy_files[@]}" -gt 0 ]; then
+      yq e -r -N '
+        select(.kind == "OverridePolicy") |
+        .spec.overrideRules[].overriders.plaintext[]? |
+        select(.path == "/metadata/annotations/lbipam.cilium.io~1ips") |
+        .value
+      ' "${preflight_policy_files[@]}" | sed '/^[[:space:]]*$/d' >>"$tmp/load-balancer-ip-claims.txt"
+    fi
+  fi
+done
+
+[ -z "$(sort "$tmp/application-identities.txt" | uniq -d)" ] || fail "duplicate generated Application identity"
+[ -z "$(sort "$tmp/release-namespaces.txt" | uniq -d)" ] || fail "duplicate release namespace"
+[ -z "$(sort "$tmp/load-balancer-ip-claims.txt" | uniq -d)" ] || fail "duplicate explicit LoadBalancer IP"
+
 for descriptor in "${descriptors[@]}"; do
   release_dir="$(dirname "$descriptor")"
   release_rel="${release_dir#"$ROOT"/}"
@@ -177,6 +216,18 @@ for descriptor in "${descriptors[@]}"; do
     .repositories[] | select(.repoURL == strenv(REPO_URL)) | .paths[] == strenv(CHART_PATH)
   ' "$children" >/dev/null || fail "source URL/path is not enrolled: $repo_url/$chart_path"
 
+  case "$repo_url|$chart_path" in
+    https://github.com/SJoon99/scalex-feature-poc.git\|chart)
+      source_contract=legacy-poc
+      ;;
+    https://github.com/BellTigerLee/smurf-child.git\|charts/rgw-analysis-web)
+      source_contract=smurf-child
+      ;;
+    *)
+      fail "enrolled source has no validation contract: $repo_url/$chart_path"
+      ;;
+  esac
+
   repo_name="$(basename "${repo_url%.git}")"
   feature_repo="$FEATURE_REPOS_ROOT/$repo_name"
   git -C "$feature_repo" rev-parse --is-inside-work-tree >/dev/null || fail "feature repository not found: $feature_repo"
@@ -189,9 +240,6 @@ for descriptor in "${descriptors[@]}"; do
   git -C "$feature_repo" cat-file -e "${revision}^{commit}" 2>/dev/null || fail "unavailable source revision: $revision"
   [ "$(git -C "$feature_repo" rev-parse "${revision}^{commit}")" = "$revision" ] || fail "source revision did not resolve exactly"
   git -C "$feature_repo" cat-file -e "$revision:$chart_path" 2>/dev/null || fail "chart path absent at pinned revision"
-  source_status="$(git -C "$feature_repo" status --porcelain=v1 --untracked-files=all | sed '/^?? AGENTS\.md$/d')"
-  [ -z "$source_status" ] ||
-    fail "feature repository working tree is dirty: $feature_repo"
   if git -C "$feature_repo" ls-tree -r "$revision" -- "$chart_path" | awk '$1 == "120000" || $1 == "160000" {found=1} END {exit !found}'; then
     fail "chart tree contains a symlink or submodule"
   fi
@@ -223,7 +271,7 @@ for descriptor in "${descriptors[@]}"; do
     [ -z "$source_revision" ] || [ "$source_revision" = "$revision" ] || fail "image sourceRevision is stale: $component"
   done < <(yq e -r '.images | to_entries[] | [.key, (.value.repository // ""), (.value.tag // ""), (.value.digest // ""), (.value.pullPolicy // ""), (.value.sourceRevision // "")] | @tsv' "$values_file")
 
-  if [ "$repo_url" = https://github.com/BellTigerLee/smurf-child.git ]; then
+  if [ "$source_contract" = smurf-child ]; then
     [ "$(yq e -r '.images | keys | sort | join(",")' "$values_file")" = flow,web ] || fail "smurf child release requires flow and web images"
     for component in flow web; do
       case "$promotion_mode" in
@@ -241,18 +289,32 @@ for descriptor in "${descriptors[@]}"; do
   fi
 
   mapfile -t dependency_files < <(find "$dependencies_root" -type f \( -name '*.yaml' -o -name '*.yml' \) | sort)
-  [ "${#dependency_files[@]}" -gt 0 ] || fail "dependency path found no YAML"
   if find "$dependencies_root" -type f \( -name '*.json' -o -name 'Chart.yaml' -o -iname 'kustomization.yaml' \) -print -quit | grep -q .; then
     fail "dependency path supports recursive plain YAML only"
   fi
   dependency_render="$tmp/$environment-$name-dependencies.yaml"
-  yq e '.' "${dependency_files[@]}" > "$dependency_render"
-  mapfile -t dependency_kinds < <(yq e -r -N 'select(. != null) | .kind // ""' "$dependency_render")
-  [ "${#dependency_kinds[@]}" -eq 1 ] && [ "${dependency_kinds[0]}" = ExternalSecret ] ||
-    fail "dependency path must contain exactly one ExternalSecret"
-  feature_dependency_validator="$ROOT/scripts/$name/validate-dependencies.sh"
-  test -x "$feature_dependency_validator" || fail "missing feature dependency validator: $name"
-  "$feature_dependency_validator" "$dependency_render"
+  : >"$dependency_render"
+  if [ "${#dependency_files[@]}" -gt 0 ]; then
+    yq e '.' "${dependency_files[@]}" > "$dependency_render"
+  fi
+  mapfile -t dependency_kinds < <(
+    yq e -r -N 'select(. != null) | .kind // ""' "$dependency_render" |
+      sed '/^[[:space:]]*$/d'
+  )
+  case "$source_contract" in
+    legacy-poc)
+      [ "${#dependency_kinds[@]}" -eq 0 ] ||
+        fail "legacy POC dependency path must contain no YAML resources"
+      ;;
+    smurf-child)
+      [ "${#dependency_kinds[@]}" -eq 1 ] && [ "${dependency_kinds[0]}" = ExternalSecret ] ||
+        fail "Smurf dependency path must contain exactly one ExternalSecret"
+      feature_dependency_validator="$ROOT/scripts/rgw-analysis-web/validate-dependencies.sh"
+      test -x "$feature_dependency_validator" || fail "missing Smurf dependency validator"
+      existing_secret="$(yq e -r '.credentials.existingSecret' "$values_file")"
+      "$feature_dependency_validator" "$dependency_render" "$namespace" "$environment" "$name" "$existing_secret"
+      ;;
+  esac
 
   mapfile -t policy_files < <(find "$policy_root" -type f \( -name '*.yaml' -o -name '*.yml' \) | sort)
   [ "${#policy_files[@]}" -gt 0 ] || fail "policy path found no YAML"
@@ -307,15 +369,15 @@ for descriptor in "${descriptors[@]}"; do
       end))
   ' >/dev/null || fail "invalid Karmada policy structure"
 
-  if [ "$name" = rgw-analysis-web ]; then
-    yq e -o=json -I=0 "$policy_render" | jq -s -e '
-      def exact_selector($api; $kind; $name):
-        (. | length) == 1 and .[0] == {
-          "apiVersion": $api,
-          "kind": $kind,
-          "name": $name,
-          "namespace": "scalex-rgw-analysis-web"
-        };
+  yq e -o=json -I=0 "$policy_render" | jq -s -e \
+    --arg namespace "$namespace" \
+    --arg profile "$source_contract" '
+      def selector($api; $kind; $name): {
+        "apiVersion": $api,
+        "kind": $kind,
+        "name": $name,
+        "namespace": $namespace
+      };
       def exact_rule($operations):
         (. | length) == 1 and
         (.[0] | keys | sort) == ["overriders", "targetCluster"] and
@@ -327,7 +389,7 @@ for descriptor in "${descriptors[@]}"; do
         .metadata.name == "rgw-analysis-web-runtime-on-b" and
         (.spec | keys | sort) == ["overrideRules", "overriders", "resourceSelectors"] and
         .spec.overriders == {} and
-        (.spec.resourceSelectors | exact_selector("v1"; "ConfigMap"; "rgw-analysis-web-runtime")) and
+        .spec.resourceSelectors == [selector("v1"; "ConfigMap"; "rgw-analysis-web-runtime")] and
         (.spec.overrideRules | exact_rule([{
           "path": "/data/S3_ENDPOINT_URL",
           "operator": "replace",
@@ -337,89 +399,59 @@ for descriptor in "${descriptors[@]}"; do
         .metadata.name == "rgw-analysis-web-result-web-on-b" and
         (.spec | keys | sort) == ["overrideRules", "overriders", "resourceSelectors"] and
         .spec.overriders == {} and
-        (.spec.resourceSelectors | exact_selector("v1"; "Service"; "rgw-analysis-web-result-web")) and
-        (.spec.overrideRules | exact_rule([{
-          "path": "/spec/type",
-          "operator": "replace",
-          "value": "LoadBalancer"
-        }, {
-          "path": "/metadata/annotations/lbipam.cilium.io~1ips",
-          "operator": "add",
-          "value": "10.33.142.20"
-        }])))
-    ' >/dev/null || fail "invalid RGW override policy allowlist"
+        .spec.resourceSelectors == [selector("v1"; "Service"; "rgw-analysis-web-result-web")] and
+        (.spec.overrideRules | exact_rule(
+          if $profile == "legacy-poc" then
+            [{"path":"/spec/type","operator":"replace","value":"LoadBalancer"},
+             {"path":"/metadata/annotations/lbipam.cilium.io~1ips","operator":"add","value":"10.33.142.20"}]
+          else
+            [{"path":"/spec/type","operator":"replace","value":"LoadBalancer"}]
+          end)))
+    ' >/dev/null || fail "invalid $source_contract RGW override policy contract"
 
-    yq e -o=json -I=0 "$policy_render" | jq -s -e '
+  yq e -o=json -I=0 "$policy_render" | jq -s -e \
+    --arg namespace "$namespace" \
+    --arg profile "$source_contract" '
       def selector($api; $kind; $name): {
         "apiVersion": $api,
         "kind": $kind,
         "name": $name,
-        "namespace": "scalex-rgw-analysis-web"
+        "namespace": $namespace
       };
       def exact_propagation($name; $selectors; $clusters; $propagate_deps; $spread):
         .metadata.name == $name and
-        (.spec | keys | sort) == [
-          "conflictResolution",
-          "placement",
-          "preemption",
-          "priority",
-          "propagateDeps",
-          "resourceSelectors",
-          "schedulerName"
-        ] and
+        (.spec | keys | sort) == ["conflictResolution", "placement", "preemption", "priority",
+          "propagateDeps", "resourceSelectors", "schedulerName"] and
         .spec.conflictResolution == "Abort" and
         .spec.preemption == "Never" and
         .spec.priority == 0 and
         .spec.schedulerName == "default-scheduler" and
         .spec.resourceSelectors == $selectors and
         .spec.propagateDeps == $propagate_deps and
-        .spec.placement == (
-          {"clusterAffinity": {"clusterNames": $clusters}} +
-          (if $spread then {"spreadConstraints": [{
-              "spreadByField": "cluster",
-              "minGroups": 1,
-              "maxGroups": 1
-            }]}
-           else {}
-           end));
+        .spec.placement == ({"clusterAffinity": {"clusterNames": $clusters}} +
+          (if $spread then {"spreadConstraints": [{"spreadByField":"cluster","minGroups":1,"maxGroups":1}]} else {} end));
       [.[] | select(.kind == "PropagationPolicy")] as $policies |
-      ($policies | length) == 4 and
-      any($policies[]; exact_propagation(
-        "rgw-analysis-web-dataset-seeder-to-b";
-        [selector("batch/v1"; "Job"; "rgw-analysis-web-dataset-seeder")];
-        ["b"];
-        true;
-        true)) and
-      any($policies[]; exact_propagation(
-        "rgw-analysis-web-analyzer-to-c";
-        [selector("batch/v1"; "Job"; "rgw-analysis-web-analyzer")];
-        ["c"];
-        true;
-        true)) and
-      any($policies[]; exact_propagation(
-        "rgw-analysis-web-result-web-to-b";
-        [
-          selector("apps/v1"; "Deployment"; "rgw-analysis-web-result-web"),
-          selector("v1"; "Service"; "rgw-analysis-web-result-web")
-        ];
-        ["b"];
-        true;
-        true)) and
-      any($policies[]; exact_propagation(
-        "rgw-analysis-web-runtime-credentials-to-b-c";
-        [selector("external-secrets.io/v1beta1"; "ExternalSecret"; "rgw-analysis-web-rgw")];
-        ["b", "c"];
-        false;
-        false))
-    ' >/dev/null || fail "invalid RGW propagation policy allowlist"
-  fi
+      ($policies | length) == (if $profile == "smurf-child" then 4 else 3 end) and
+      any($policies[]; exact_propagation("rgw-analysis-web-dataset-seeder-to-b";
+        [selector("batch/v1"; "Job"; "rgw-analysis-web-dataset-seeder")]; ["b"]; true; true)) and
+      any($policies[]; exact_propagation("rgw-analysis-web-analyzer-to-c";
+        [selector("batch/v1"; "Job"; "rgw-analysis-web-analyzer")]; ["c"]; true; true)) and
+      any($policies[]; exact_propagation("rgw-analysis-web-result-web-to-b";
+        [selector("apps/v1"; "Deployment"; "rgw-analysis-web-result-web"),
+         selector("v1"; "Service"; "rgw-analysis-web-result-web")]; ["b"]; true; true)) and
+      (if $profile == "smurf-child" then
+        any($policies[]; exact_propagation("rgw-analysis-web-runtime-credentials-to-b-c";
+          [selector("external-secrets.io/v1beta1"; "ExternalSecret"; "rgw-analysis-web-rgw")];
+          ["b", "c"]; false; false))
+       else true end)
+    ' >/dev/null || fail "invalid $source_contract RGW propagation policy contract"
 
   helm lint "$chart_dir" -f "$values_file"
   chart_render="$tmp/$environment-$name-chart.yaml"
   helm template "$name" "$chart_dir" --namespace "$namespace" -f "$values_file" > "$chart_render"
   yq e -e 'select(.kind == "Secret" or .kind == "ExternalSecret" or .kind == "PropagationPolicy" or .kind == "OverridePolicy" or .kind == "Namespace" or .kind == "StorageClass" or .kind == "CustomResourceDefinition" or .kind == "ClusterRole" or .kind == "ClusterRoleBinding")' "$chart_render" >/dev/null 2>&1 &&
     fail "feature chart renders a forbidden or cluster-specific resource"
-  if [ "$repo_url" = https://github.com/BellTigerLee/smurf-child.git ]; then
+  if [ "$source_contract" = smurf-child ]; then
     endpoint="$(yq e -r '.storage.endpointUrl' "$values_file")"
     bucket="$(yq e -r '.storage.bucket' "$values_file")"
     region="$(yq e -r '.storage.region' "$values_file")"
@@ -495,9 +527,17 @@ for descriptor in "${descriptors[@]}"; do
   )
 
   identities="$tmp/$environment-$name-identities.txt"
-  yq e -r -N 'select(. != null) | [.apiVersion, .kind, .metadata.namespace, .metadata.name] | @tsv' \
-    "$chart_render" "$dependency_render" "$policy_render" | sort > "$identities"
+  NAMESPACE="$namespace" yq e -r -N '
+    select(. != null) |
+    [.apiVersion, .kind, (.metadata.namespace // strenv(NAMESPACE)), .metadata.name] | @tsv
+  ' "$chart_render" "$dependency_render" "$policy_render" | sort > "$identities"
   [ -z "$(uniq -d "$identities")" ] || fail "duplicate rendered resource identity"
+  cat "$identities" >>"$tmp/rendered-identities.txt"
+
+  NAMESPACE="$namespace" yq e -r -N '
+    select(.kind == "ExternalSecret") |
+    [(.metadata.namespace // strenv(NAMESPACE)), .spec.target.name] | @tsv
+  ' "$dependency_render" >>"$tmp/external-secret-targets.txt"
 
   if [ -n "$VALIDATE_BASE_REF" ] && git -C "$ROOT" cat-file -e "$VALIDATE_BASE_REF:$descriptor_rel" 2>/dev/null; then
     previous_revision="$(git -C "$ROOT" show "$VALIDATE_BASE_REF:$descriptor_rel" | yq e -r '.source.revision')"
@@ -507,6 +547,12 @@ for descriptor in "${descriptors[@]}"; do
       fail "image promotion must update source revision atomically: $release_rel"
   fi
 done
+
+[ -z "$(sort "$tmp/application-identities.txt" | uniq -d)" ] || fail "duplicate generated Application identity"
+[ -z "$(sort "$tmp/release-namespaces.txt" | uniq -d)" ] || fail "duplicate release namespace"
+[ -z "$(sort "$tmp/rendered-identities.txt" | uniq -d)" ] || fail "duplicate aggregate rendered resource identity"
+[ -z "$(sort "$tmp/external-secret-targets.txt" | uniq -d)" ] || fail "duplicate namespace-scoped ExternalSecret target"
+[ -z "$(sort "$tmp/load-balancer-ip-claims.txt" | uniq -d)" ] || fail "duplicate explicit LoadBalancer IP"
 
 mapfile -t federation_yaml < <(find "$ROOT/bootstrap" "$ROOT/releases" -type f \( -name '*.yaml' -o -name '*.yml' \) | sort)
 for manifest in "${federation_yaml[@]}"; do

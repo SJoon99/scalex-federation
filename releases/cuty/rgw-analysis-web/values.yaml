@@ -1,0 +1,36 @@
+runId: cuty-rgw-analysis-web
+
+resultSync:
+  intervalSeconds: 10
+
+storage:
+  endpointUrl: http://10.33.142.10
+  bucket: scalex-poc
+  region: scalex-poc
+  waitSeconds: 600
+  pollIntervalSeconds: 5
+
+credentials:
+  existingSecret: scalex-cuty-rgw
+  accessKeyIdKey: access-key-id
+  secretAccessKeyKey: secret-access-key
+  sessionTokenKey: session-token
+
+images:
+  flow:
+    repository: belltigerlee/test-image-flow
+    tag: sha-05e2de4a0963a2373588a999c415e14b6648febc
+    digest: sha256:6bb09aa292213b59f5235f16e25138765a411d4727c7078747a159d9faeff001
+    sourceRevision: 05e2de4a0963a2373588a999c415e14b6648febc
+    pullPolicy: IfNotPresent
+  web:
+    repository: belltigerlee/test-image-web
+    tag: sha-05e2de4a0963a2373588a999c415e14b6648febc
+    digest: sha256:756bc5a1c6030c1b92086eaa6fafa60f26d47ce2018652ab983f0f3388f87e7e
+    sourceRevision: 05e2de4a0963a2373588a999c415e14b6648febc
+    pullPolicy: IfNotPresent
+
+service:
+  port: 80
+  annotations:
+    scalex.io/exposure: internal

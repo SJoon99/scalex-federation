@@ -1,0 +1,21 @@
+apiVersion: policy.karmada.io/v1alpha1
+kind: OverridePolicy
+metadata:
+  name: rgw-analysis-web-result-web-on-b
+  namespace: scalex-cuty-rgw-analysis-web
+spec:
+  overriders: {}
+  resourceSelectors:
+    - apiVersion: v1
+      kind: Service
+      name: rgw-analysis-web-result-web
+      namespace: scalex-cuty-rgw-analysis-web
+  overrideRules:
+    - targetCluster:
+        clusterNames:
+          - b
+      overriders:
+        plaintext:
+          - path: /spec/type
+            operator: replace
+            value: LoadBalancer

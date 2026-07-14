@@ -17,6 +17,11 @@ storage:
   region: scalex-poc
   waitSeconds: 600
   pollIntervalSeconds: 5
+credentials:
+  existingSecret: scalex-poc-rgw
+  accessKeyIdKey: access-key-id
+  secretAccessKeyKey: secret-access-key
+  sessionTokenKey: session-token
 images:
   flow:
     repository: ghcr.io/belltigerlee/smurf-child-flow

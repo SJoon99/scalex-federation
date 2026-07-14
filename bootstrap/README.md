@@ -11,9 +11,10 @@ Tower root Application은 이 디렉터리의 두 manifest를 plain directory로
 ApplicationSet은 각 release의 `policy.path`에 `directory.recurse=true`를
 적용하므로 `karmada/` 아래 Kubernetes YAML은 모두 배포 대상이다. 문서용
 YAML이나 미완성 manifest는 이 경로에 두지 않는다.
-`dependencies.path`도 plain directory로 재귀 처리하며, 현재 POC에서는 Federation이
-소유하는 `ExternalSecret`만 둔다. Feature chart source는 `renderer: helm/v1` 계약에
-따라 exact repository/path/full SHA에서 읽는다.
+`dependencies.path`도 plain directory로 재귀 처리한다. 복원된 legacy POC의 dependency
+directory에는 배포 YAML이 없고, additive Cuty Smurf release만 Federation 소유
+`ExternalSecret`을 둔다. Feature chart source는 `renderer: helm/v1` 계약에 따라 exact
+repository/path/full SHA에서 읽는다.
 
 기능별 Application YAML은 두지 않는다. 신규 release는 `release.yaml`을
 추가하면 ApplicationSet이 Argo `Application`을 생성한다. Karmada 설치,

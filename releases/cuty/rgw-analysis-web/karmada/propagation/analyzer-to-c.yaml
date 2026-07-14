@@ -1,0 +1,24 @@
+apiVersion: policy.karmada.io/v1alpha1
+kind: PropagationPolicy
+metadata:
+  name: rgw-analysis-web-analyzer-to-c
+  namespace: scalex-cuty-rgw-analysis-web
+spec:
+  conflictResolution: Abort
+  preemption: Never
+  priority: 0
+  schedulerName: default-scheduler
+  resourceSelectors:
+    - apiVersion: batch/v1
+      kind: Job
+      name: rgw-analysis-web-analyzer
+      namespace: scalex-cuty-rgw-analysis-web
+  propagateDeps: true
+  placement:
+    clusterAffinity:
+      clusterNames:
+        - c
+    spreadConstraints:
+      - spreadByField: cluster
+        minGroups: 1
+        maxGroups: 1
