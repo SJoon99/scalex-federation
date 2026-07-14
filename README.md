@@ -43,6 +43,8 @@ member clusters
 | [`contracts/`](contracts/README.md) | naming, label, ownership, secret 계약 |
 | [`tests/`](tests/README.md) | render 및 정책 정합성 검증 |
 | [`scripts/`](scripts/README.md) | 반복 가능한 로컬·CI 검증 도구 |
+| [`docs/common-contract.md`](docs/common-contract.md) | Infra·feature·Federation 공통 소유권 계약 |
+| [`docs/HOWTORUN.md`](docs/HOWTORUN.md) | child feature 연결 절차 |
 
 ## Release discovery
 
