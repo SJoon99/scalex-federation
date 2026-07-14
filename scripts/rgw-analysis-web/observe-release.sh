@@ -147,6 +147,8 @@ expected_endpoint_for_context() {
   [ -d "$override_root" ] || return 0
   mapfile -t override_files < <(find "$override_root" -type f \( -name '*.yaml' -o -name '*.yml' \) | sort)
   [ "${#override_files[@]}" -gt 0 ] || return 0
+  # $selector/$cluster below are yq variables, not shell variables.
+  # shellcheck disable=SC2016
   if ! CLUSTER="$context" yq e -r -N '
     select(.kind == "OverridePolicy") |
     .spec.resourceSelectors[] as $selector |

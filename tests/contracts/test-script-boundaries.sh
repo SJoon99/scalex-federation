@@ -67,7 +67,7 @@ mapfile -t cuty_mutations < <(
     "$cuty_bootstrap"
 )
 [ "${#cuty_mutations[@]}" -eq 2 ] || fail "Cuty bootstrap mutation surface drifted"
-printf '%s\n' "${cuty_mutations[@]}" | grep -Fq 'create namespace "$TARGET_NAMESPACE"' ||
+printf '%s\n' "${cuty_mutations[@]}" | grep -Fq "create namespace \"\$TARGET_NAMESPACE\"" ||
   fail "Cuty bootstrap namespace mutation drifted"
 printf '%s\n' "${cuty_mutations[@]}" | grep -Fq 'apply --server-side' ||
   fail "Cuty bootstrap Secret mutation drifted"
