@@ -227,7 +227,7 @@ run_smurf_contract() {
   chmod +x "$federation/scripts/rgw-analysis-web/observe-release.sh"
   cp -R "$ROOT/releases/cuty/rgw-analysis-web" "$federation/releases/cuty/"
 
-  for fixture in bindings.json deployment.json external-secret.json job-analyzer.json job-seeder.json service.json; do
+  for fixture in bindings.json deployment.json job-analyzer.json job-seeder.json service.json; do
     sed \
       -e "s|__REVISION__|$revision|g" \
       -e "s|__FLOW_IMAGE__|$flow_image|g" \
@@ -235,6 +235,15 @@ run_smurf_contract() {
       "$fixture_root/$fixture" |
       sed "s/scalex-rgw-analysis-web/$namespace/g" > "$fixtures/$fixture"
   done
+  jq \
+    --arg namespace "$namespace" '
+      .metadata.namespace = $namespace |
+      .metadata.name = "scalex-cuty-rgw" |
+      .data = {
+        "access-key-id": .data.AWS_ACCESS_KEY_ID,
+        "secret-access-key": .data.AWS_SECRET_ACCESS_KEY
+      }
+    ' "$fixture_root/secret.json" > "$fixtures/secret.json"
   jq \
     --arg namespace "$namespace" \
     --arg endpoint "$(yq e -r '.storage.endpointUrl' "$values")" \
@@ -291,7 +300,7 @@ run_smurf_contract() {
   local success_page="$smurf_child/src/rgw-analysis-web/web/fixtures/success.html"
 
   local scenario
-  for scenario in wrong-api-version wrong-kind; do
+  for scenario in wrong-api-version wrong-kind missing-secret-key; do
     cp "$success_page" "$fixtures/result.html"
     if PATH="$tmp/bin:$PATH" \
       FAKE_FIXTURE_ROOT="$fixtures" \
@@ -302,7 +311,7 @@ run_smurf_contract() {
       OBSERVE_INTERVAL_SECONDS=0 \
       "$federation/scripts/rgw-analysis-web/observe-release.sh" cuty rgw-analysis-web \
       >"$tmp/smurf-$scenario.log" 2>&1; then
-      echo "Smurf child ExternalSecret scenario unexpectedly passed: $scenario" >&2
+      echo "Smurf child runtime Secret scenario unexpectedly passed: $scenario" >&2
       exit 1
     fi
     grep -Fq 'runtime observation failed' "$tmp/smurf-$scenario.log"

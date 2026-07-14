@@ -28,8 +28,6 @@ spec:
       kind: Deployment
     - group: batch
       kind: Job
-    - group: external-secrets.io
-      kind: ExternalSecret
     - group: policy.karmada.io
       kind: PropagationPolicy
     - group: policy.karmada.io

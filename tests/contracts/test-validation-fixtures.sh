@@ -46,7 +46,7 @@ make_federation() {
   find "$target/releases/poc/rgw-analysis-web/dependencies" \
     "$target/releases/poc/rgw-analysis-web/karmada" -type f \
     \( -name '*.yaml' -o -name '*.yml' \) -exec \
-    sed -i 's/scalex-cuty-rgw-analysis-web/scalex-rgw-analysis-web/g; s#scalex/cuty/rgw-analysis-web/rgw#scalex/poc/rgw-analysis-web/rgw#g; s/scalex-cuty-rgw/scalex-poc-rgw/g' {} +
+    sed -i 's/scalex-cuty-rgw-analysis-web/scalex-rgw-analysis-web/g' {} +
 }
 
 expect_reject() {
@@ -96,6 +96,16 @@ set_stale_revision() {
 
 set_missing_digest() {
   yq -i '.images.web.digest = ""' "$1/releases/poc/rgw-analysis-web/values.yaml"
+}
+
+set_secret_reference_mismatch() {
+  yq -i '.credentials.existingSecret = "another-secret"' \
+    "$1/releases/poc/rgw-analysis-web/values.yaml"
+}
+
+set_session_token_reference_mismatch() {
+  yq -i '.credentials.sessionTokenKey = "another-session-token"' \
+    "$1/releases/poc/rgw-analysis-web/values.yaml"
 }
 
 set_manual_pinned_images() {
@@ -201,14 +211,13 @@ set_malformed_descriptor() {
   printf '%s\n' 'apiVersion: scalex.io/v1alpha1' 'source: [' > "$1/releases/poc/rgw-analysis-web/release.yaml"
 }
 
-set_external_secret_template_payload() {
-  yq -i '.spec.target.template.data.AWS_SECRET_ACCESS_KEY = "embedded-value"' \
-    "$1/releases/poc/rgw-analysis-web/dependencies/external-secret.yaml"
-}
-
-set_external_secret_extra_remote_ref() {
-  yq -i '.spec.data = [{"secretKey":"extra","remoteRef":{"key":"another/key"}}]' \
-    "$1/releases/poc/rgw-analysis-web/dependencies/external-secret.yaml"
+set_deployable_dependency() {
+  printf '%s\n' \
+    'apiVersion: v1' \
+    'kind: ConfigMap' \
+    'metadata:' \
+    '  name: child-owned-dependency' \
+    > "$1/releases/poc/rgw-analysis-web/dependencies/child-owned.yaml"
 }
 
 set_duplicate_policy() {
@@ -363,6 +372,8 @@ expect_reject cross-field-values-path 'values.path does not match release identi
 expect_reject mutable-tag 'image tag must be explicit and non-latest' set_mutable_tag
 expect_reject stale-revision 'image sourceRevision is stale' set_stale_revision
 expect_reject missing-digest 'image digest is not immutable' set_missing_digest
+expect_reject secret-reference-mismatch 'Smurf credential Secret reference does not match release environment' set_secret_reference_mismatch
+expect_reject session-token-reference-mismatch 'unexpected Smurf session token reference' set_session_token_reference_mismatch
 expect_reject tracked-manual-repository 'unexpected tracked Smurf image repository' set_tracked_manual_repository
 expect_reject unapproved-pinned-repository 'unexpected pinned Smurf image repository' set_unapproved_pinned_repository
 expect_reject selector-mismatch 'invalid smurf-child RGW propagation policy contract' set_selector_mismatch
@@ -380,8 +391,7 @@ expect_reject origin-mismatch 'feature origin does not match enrollment' set_ori
 expect_reject unapproved-source 'source URL/path is not enrolled' set_unapproved_source
 expect_reject project-wildcard 'AppProject sourceRepos and children enrollment differ' set_project_wildcard
 expect_reject malformed-descriptor 'release schema validation failed' set_malformed_descriptor
-expect_reject external-secret-template-payload 'invalid RGW ExternalSecret structure' set_external_secret_template_payload
-expect_reject external-secret-extra-remote-ref 'invalid RGW ExternalSecret structure' set_external_secret_extra_remote_ref
+expect_reject deployable-dependency 'Smurf dependency path must contain no YAML resources' set_deployable_dependency
 expect_reject extra-applicationset-source 'ApplicationSet sources must exactly match the v1 Helm release contract' set_extra_applicationset_source
 expect_reject generator-repository-mismatch 'ApplicationSet generator must exactly discover Federation releases' set_generator_repository_mismatch
 expect_reject generator-path-mismatch 'ApplicationSet generator must exactly discover Federation releases' set_generator_path_mismatch

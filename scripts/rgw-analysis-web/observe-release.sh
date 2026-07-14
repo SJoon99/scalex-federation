@@ -61,9 +61,18 @@ if [ "$source_contract" = smurf-child ]; then
 fi
 if [ "$source_contract" = smurf-child ]; then
   storage_path=storage
+  expected_secret="$(yq e -r '.credentials.existingSecret' "$VALUES")"
+  expected_access_key="$(yq e -r '.credentials.accessKeyIdKey' "$VALUES")"
+  expected_secret_key="$(yq e -r '.credentials.secretAccessKeyKey' "$VALUES")"
 else
   storage_path=s3
+  expected_secret="$(yq e -r '.s3.secretName' "$VALUES")"
+  expected_access_key=AWS_ACCESS_KEY_ID
+  expected_secret_key=AWS_SECRET_ACCESS_KEY
 fi
+[[ "$expected_secret" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || fail "runtime Secret name is invalid"
+[[ "$expected_access_key" =~ ^[-._a-zA-Z0-9]+$ ]] || fail "runtime access-key field is invalid"
+[[ "$expected_secret_key" =~ ^[-._a-zA-Z0-9]+$ ]] || fail "runtime secret-key field is invalid"
 expected_endpoint="$(STORAGE_PATH="$storage_path" yq e -r '.[strenv(STORAGE_PATH)].endpointUrl' "$VALUES")"
 expected_bucket="$(STORAGE_PATH="$storage_path" yq e -r '.[strenv(STORAGE_PATH)].bucket' "$VALUES")"
 expected_region="$(STORAGE_PATH="$storage_path" yq e -r '.[strenv(STORAGE_PATH)].region' "$VALUES")"
@@ -179,10 +188,7 @@ check_bindings() {
     placed("batch/v1"; "Job"; "rgw-analysis-web-dataset-seeder"; ["b"]) and
     placed("batch/v1"; "Job"; "rgw-analysis-web-analyzer"; ["c"]) and
     placed("apps/v1"; "Deployment"; "rgw-analysis-web-result-web"; ["b"]) and
-    placed("v1"; "Service"; "rgw-analysis-web-result-web"; ["b"]) and
-    (if $profile == "smurf-child" then
-      placed("external-secrets.io/v1beta1"; "ExternalSecret"; "rgw-analysis-web-rgw"; ["b", "c"])
-     else true end)
+    placed("v1"; "Service"; "rgw-analysis-web-result-web"; ["b"])
   ' "$file" >/dev/null || {
     LAST_ERROR="Karmada placement is missing, partial, or not fully applied"
     return 1
@@ -247,13 +253,19 @@ check_configmap() {
   fi
 }
 
-check_external_secret() {
+check_runtime_secret() {
   local file="$1"
-  jq -e '
-    .status.observedGeneration >= .metadata.generation and
-    any(.status.conditions[]?; .type == "Ready" and .status == "True")
+  jq -e \
+    --arg access_key "$expected_access_key" \
+    --arg secret_key "$expected_secret_key" '
+    .type == "Opaque" and
+    (.data | type) == "object" and
+    (.data[$access_key] | type) == "string" and
+    (.data[$access_key] | length) > 0 and
+    (.data[$secret_key] | type) == "string" and
+    (.data[$secret_key] | length) > 0
   ' "$file" >/dev/null || {
-    LAST_ERROR="ExternalSecret is not Ready"
+    LAST_ERROR="runtime Secret is missing required credential keys"
     return 1
   }
 }
@@ -344,12 +356,10 @@ check_once() {
 
   local context
   for context in b c; do
-    if [ "$source_contract" = smurf-child ]; then
-      read_object "$context" "$NAMESPACE" externalsecrets.external-secrets.io \
-        rgw-analysis-web-rgw external-secrets.io/v1beta1 ExternalSecret \
-        "$tmp/external-secret-$context.json" || return 1
-      check_external_secret "$tmp/external-secret-$context.json" || return 1
-    else
+    read_object "$context" "$NAMESPACE" secrets "$expected_secret" \
+      v1 Secret "$tmp/secret-$context.json" || return 1
+    check_runtime_secret "$tmp/secret-$context.json" || return 1
+    if [ "$source_contract" = legacy-poc ]; then
       read_object "$context" "$NAMESPACE" configmaps rgw-analysis-web-scripts \
         v1 ConfigMap "$tmp/scripts-$context.json" || return 1
       check_configmap "$tmp/scripts-$context.json" scripts || return 1

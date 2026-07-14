@@ -47,8 +47,8 @@ releases/
   유지한다. Namespace는 `scalex-rgw-analysis-web`이며 dependency YAML 없이 승인된
   legacy credential bootstrap 경계를 사용한다.
 - `cuty/rgw-analysis-web`: `smurf-child`를 별도 Application과
-  `scalex-cuty-rgw-analysis-web` namespace로 추가한다. Cuty 전용 ExternalSecret과
-  Karmada policy를 소유하며 POC를 대체하지 않는다.
+  `scalex-cuty-rgw-analysis-web` namespace로 추가한다. Dependency YAML 없이 승인된
+  Cuty credential bootstrap 경계와 Karmada policy를 사용하며 POC를 대체하지 않는다.
 
 두 release는 동시에 active이며 committed inventory contract가 path/Application/
 namespace/source URL/chart path의 정확한 집합을 고정한다. POC source SHA는 baseline으로

@@ -107,10 +107,6 @@ yq e -e '
 yq e -e '.spec.template.metadata.name == "federation-{{ .environment }}-{{ .name }}"' \
   "$ROOT/bootstrap/applicationset.yaml" >/dev/null ||
   fail "ApplicationSet name template must include environment and release"
-yq e -e '
-  .spec.namespaceResourceWhitelist[] |
-  select(.group == "external-secrets.io" and .kind == "ExternalSecret")
-' "$ROOT/bootstrap/appproject.yaml" >/dev/null || fail "AppProject must allow ExternalSecret"
 for binding in ResourceBinding ClusterResourceBinding; do
   BINDING="$binding" yq e -e '
     (.spec.namespaceResourceWhitelist[]?, .spec.clusterResourceWhitelist[]?) |
@@ -162,7 +158,6 @@ fi
 : >"$tmp/application-identities.txt"
 : >"$tmp/release-namespaces.txt"
 : >"$tmp/rendered-identities.txt"
-: >"$tmp/external-secret-targets.txt"
 : >"$tmp/load-balancer-ip-claims.txt"
 
 for descriptor in "${descriptors[@]}"; do
@@ -307,12 +302,19 @@ for descriptor in "${descriptors[@]}"; do
         fail "legacy POC dependency path must contain no YAML resources"
       ;;
     smurf-child)
-      [ "${#dependency_kinds[@]}" -eq 1 ] && [ "${dependency_kinds[0]}" = ExternalSecret ] ||
-        fail "Smurf dependency path must contain exactly one ExternalSecret"
-      feature_dependency_validator="$ROOT/scripts/rgw-analysis-web/validate-dependencies.sh"
-      test -x "$feature_dependency_validator" || fail "missing Smurf dependency validator"
+      [ "${#dependency_kinds[@]}" -eq 0 ] ||
+        fail "Smurf dependency path must contain no YAML resources"
       existing_secret="$(yq e -r '.credentials.existingSecret' "$values_file")"
-      "$feature_dependency_validator" "$dependency_render" "$namespace" "$environment" "$name" "$existing_secret"
+      access_key_name="$(yq e -r '.credentials.accessKeyIdKey' "$values_file")"
+      secret_key_name="$(yq e -r '.credentials.secretAccessKeyKey' "$values_file")"
+      session_token_name="$(yq e -r '.credentials.sessionTokenKey' "$values_file")"
+      [[ "$existing_secret" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] ||
+        fail "invalid Smurf credential Secret reference"
+      [ "$existing_secret" = "scalex-$environment-rgw" ] ||
+        fail "Smurf credential Secret reference does not match release environment"
+      [ "$access_key_name" = access-key-id ] || fail "unexpected Smurf access key reference"
+      [ "$secret_key_name" = secret-access-key ] || fail "unexpected Smurf secret key reference"
+      [ "$session_token_name" = session-token ] || fail "unexpected Smurf session token reference"
       ;;
   esac
 
@@ -431,19 +433,14 @@ for descriptor in "${descriptors[@]}"; do
         .spec.placement == ({"clusterAffinity": {"clusterNames": $clusters}} +
           (if $spread then {"spreadConstraints": [{"spreadByField":"cluster","minGroups":1,"maxGroups":1}]} else {} end));
       [.[] | select(.kind == "PropagationPolicy")] as $policies |
-      ($policies | length) == (if $profile == "smurf-child" then 4 else 3 end) and
+      ($policies | length) == 3 and
       any($policies[]; exact_propagation("rgw-analysis-web-dataset-seeder-to-b";
         [selector("batch/v1"; "Job"; "rgw-analysis-web-dataset-seeder")]; ["b"]; true; true)) and
       any($policies[]; exact_propagation("rgw-analysis-web-analyzer-to-c";
         [selector("batch/v1"; "Job"; "rgw-analysis-web-analyzer")]; ["c"]; true; true)) and
       any($policies[]; exact_propagation("rgw-analysis-web-result-web-to-b";
         [selector("apps/v1"; "Deployment"; "rgw-analysis-web-result-web"),
-         selector("v1"; "Service"; "rgw-analysis-web-result-web")]; ["b"]; true; true)) and
-      (if $profile == "smurf-child" then
-        any($policies[]; exact_propagation("rgw-analysis-web-runtime-credentials-to-b-c";
-          [selector("external-secrets.io/v1beta1"; "ExternalSecret"; "rgw-analysis-web-rgw")];
-          ["b", "c"]; false; false))
-       else true end)
+         selector("v1"; "Service"; "rgw-analysis-web-result-web")]; ["b"]; true; true))
     ' >/dev/null || fail "invalid $source_contract RGW propagation policy contract"
 
   helm lint "$chart_dir" -f "$values_file"
@@ -520,7 +517,7 @@ for descriptor in "${descriptors[@]}"; do
     [ "$selector_count" -eq 1 ] || fail "rendered workload must have exactly one propagation selector: $kind/$resource_name"
   done < <(
     yq e -r -N '
-      select(.kind == "Deployment" or .kind == "Job" or .kind == "Service" or .kind == "ExternalSecret") |
+      select(.kind == "Deployment" or .kind == "Job" or .kind == "Service") |
       [.apiVersion, .kind, .metadata.name] | @tsv
     ' "$chart_render" "$dependency_render" |
       sed '/^[[:space:]]*$/d'
@@ -534,11 +531,6 @@ for descriptor in "${descriptors[@]}"; do
   [ -z "$(uniq -d "$identities")" ] || fail "duplicate rendered resource identity"
   cat "$identities" >>"$tmp/rendered-identities.txt"
 
-  NAMESPACE="$namespace" yq e -r -N '
-    select(.kind == "ExternalSecret") |
-    [(.metadata.namespace // strenv(NAMESPACE)), .spec.target.name] | @tsv
-  ' "$dependency_render" >>"$tmp/external-secret-targets.txt"
-
   if [ -n "$VALIDATE_BASE_REF" ] && git -C "$ROOT" cat-file -e "$VALIDATE_BASE_REF:$descriptor_rel" 2>/dev/null; then
     previous_revision="$(git -C "$ROOT" show "$VALIDATE_BASE_REF:$descriptor_rel" | yq e -r '.source.revision')"
     previous_images="$(git -C "$ROOT" show "$VALIDATE_BASE_REF:$values_rel" | yq e -o=json -I=0 '.images // {}')"
@@ -551,7 +543,6 @@ done
 [ -z "$(sort "$tmp/application-identities.txt" | uniq -d)" ] || fail "duplicate generated Application identity"
 [ -z "$(sort "$tmp/release-namespaces.txt" | uniq -d)" ] || fail "duplicate release namespace"
 [ -z "$(sort "$tmp/rendered-identities.txt" | uniq -d)" ] || fail "duplicate aggregate rendered resource identity"
-[ -z "$(sort "$tmp/external-secret-targets.txt" | uniq -d)" ] || fail "duplicate namespace-scoped ExternalSecret target"
 [ -z "$(sort "$tmp/load-balancer-ip-claims.txt" | uniq -d)" ] || fail "duplicate explicit LoadBalancer IP"
 
 mapfile -t federation_yaml < <(find "$ROOT/bootstrap" "$ROOT/releases" -type f \( -name '*.yaml' -o -name '*.yml' \) | sort)

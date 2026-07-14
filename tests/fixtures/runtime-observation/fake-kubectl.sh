@@ -43,13 +43,15 @@ case "$context:$resource:$name" in
       jq '.' "$FAKE_FIXTURE_ROOT/bindings.json"
     fi
     ;;
-  b:externalsecrets.external-secrets.io:rgw-analysis-web-rgw|c:externalsecrets.external-secrets.io:rgw-analysis-web-rgw)
+  b:secrets:scalex-poc-rgw|c:secrets:scalex-poc-rgw|b:secrets:scalex-cuty-rgw|c:secrets:scalex-cuty-rgw)
     if [ "${FAKE_SCENARIO:-healthy}" = wrong-api-version ] && [ "$context" = b ]; then
-      jq '.apiVersion = "external-secrets.io/v1alpha1"' "$FAKE_FIXTURE_ROOT/external-secret.json"
+      jq '.apiVersion = "v2"' "$FAKE_FIXTURE_ROOT/secret.json"
     elif [ "${FAKE_SCENARIO:-healthy}" = wrong-kind ] && [ "$context" = b ]; then
-      jq '.kind = "Secret"' "$FAKE_FIXTURE_ROOT/external-secret.json"
+      jq '.kind = "ConfigMap"' "$FAKE_FIXTURE_ROOT/secret.json"
+    elif [ "${FAKE_SCENARIO:-healthy}" = missing-secret-key ] && [ "$context" = c ]; then
+      jq 'del(.data["secret-access-key"], .data.AWS_SECRET_ACCESS_KEY)' "$FAKE_FIXTURE_ROOT/secret.json"
     else
-      jq '.' "$FAKE_FIXTURE_ROOT/external-secret.json"
+      jq '.' "$FAKE_FIXTURE_ROOT/secret.json"
     fi
     ;;
   b:configmaps:rgw-analysis-web-scripts|c:configmaps:rgw-analysis-web-scripts)

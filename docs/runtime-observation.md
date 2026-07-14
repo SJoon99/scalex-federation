@@ -23,7 +23,7 @@ run body 전에 environment나 kubeconfig를 읽는 경로도 거부한다.
 
 - 모든 named 응답의 exact apiVersion/kind/name/namespace identity
 - Karmada ResourceBindingList/item identity, 예상 `b`/`c` placement와 cluster별 `applied: true`
-- Smurf release에서는 양쪽 member의 ExternalSecret `Ready` (legacy POC는 이 resource를 소유하지 않음)
+- 양쪽 member의 source-specific native Secret identity와 필수 credential key 존재 여부
 - 양쪽 member의 source-specific runtime ConfigMap identity, release label과 필수 data surface
 - result-web Deployment ready, seeder/analyzer Job complete
 - member workload의 image 집합이 release values의 exact tag+digest 집합과 일치

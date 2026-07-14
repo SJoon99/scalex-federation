@@ -141,7 +141,6 @@ record_aggregate_identities() {
   local feature_repo chart_export chart_render dependencies_path policy_path
   local -a manifests
   : >"$tmp/rendered-identities.txt"
-  : >"$tmp/external-secret-targets.txt"
   for descriptor in "${descriptors[@]}"; do
     environment="$(yq e -r '.environment' "$descriptor")"
     name="$(yq e -r '.name' "$descriptor")"
@@ -170,21 +169,12 @@ record_aggregate_identities() {
       [.apiVersion, .kind, (.metadata.namespace // strenv(NAMESPACE)), .metadata.name] |
       @tsv
     ' "${manifests[@]}" >>"$tmp/rendered-identities.txt"
-    NAMESPACE="$namespace" yq e -r -N '
-      select(.kind == "ExternalSecret") |
-      [(.metadata.namespace // strenv(NAMESPACE)), .spec.target.name] |
-      @tsv
-    ' "${manifests[@]}" >>"$tmp/external-secret-targets.txt"
   done
 }
 
 record_aggregate_identities
 [ -z "$(LC_ALL=C sort "$tmp/rendered-identities.txt" | uniq -d)" ] || {
   echo "happy-path releases contain duplicate rendered resource identity" >&2
-  exit 1
-}
-[ -z "$(LC_ALL=C sort "$tmp/external-secret-targets.txt" | uniq -d)" ] || {
-  echo "happy-path releases contain duplicate namespace-scoped ExternalSecret target" >&2
   exit 1
 }
 mapfile -t cuty_load_balancer_ips < <(
