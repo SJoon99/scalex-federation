@@ -24,17 +24,22 @@ spec:
     spec:
       project: scalex-federation
       sources:
-        - repoURL: '{{ .chart.repoURL }}'
-          targetRevision: '{{ .chart.revision }}'
-          path: '{{ .chart.path }}'
+        - repoURL: '{{ .source.repoURL }}'
+          targetRevision: '{{ .source.revision }}'
+          path: '{{ .source.path }}'
           helm:
             releaseName: '{{ .name }}'
             valueFiles:
-              - '$federation/{{ .valuesFile }}'
+              - '$federation/{{ .values.path }}'
         - repoURL: https://github.com/SJoon99/scalex-federation.git
           targetRevision: main
           ref: federation
           path: '{{ .policy.path }}'
+          directory:
+            recurse: true
+        - repoURL: https://github.com/SJoon99/scalex-federation.git
+          targetRevision: main
+          path: '{{ .dependencies.path }}'
           directory:
             recurse: true
       destination:
