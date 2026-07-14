@@ -37,6 +37,8 @@ case "$context:$resource:$name" in
       jq '.items[0].metadata.namespace = "another-namespace"' "$FAKE_FIXTURE_ROOT/bindings.json"
     elif [ "${FAKE_SCENARIO:-healthy}" = wrong-list-identity ]; then
       jq '.kind = "List"' "$FAKE_FIXTURE_ROOT/bindings.json"
+    elif [ "${FAKE_SCENARIO:-healthy}" = generic-list ]; then
+      jq '.apiVersion = "v1" | .kind = "List"' "$FAKE_FIXTURE_ROOT/bindings.json"
     elif [ "${FAKE_SCENARIO:-healthy}" = partial ]; then
       jq 'del(.items[] | select(.spec.resource.name == "rgw-analysis-web-analyzer"))' "$FAKE_FIXTURE_ROOT/bindings.json"
     else

@@ -122,8 +122,8 @@ read_bindings() {
     return 1
   fi
   jq -e --arg namespace "$NAMESPACE" '
-    .apiVersion == "work.karmada.io/v1alpha2" and
-    .kind == "ResourceBindingList" and
+    ((.apiVersion == "work.karmada.io/v1alpha2" and .kind == "ResourceBindingList") or
+     (.apiVersion == "v1" and .kind == "List")) and
     (.items | type) == "array" and
     all(.items[];
       .apiVersion == "work.karmada.io/v1alpha2" and

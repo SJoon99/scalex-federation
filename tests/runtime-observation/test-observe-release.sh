@@ -124,6 +124,7 @@ run_case unreachable fail
 run_case wrong-object fail
 run_case wrong-name fail
 run_case wrong-namespace fail
+run_case generic-list pass
 run_case wrong-list-identity fail
 run_case wrong-binding-item fail
 run_case strict-context-boundary pass
