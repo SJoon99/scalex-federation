@@ -57,7 +57,7 @@ jq -e '
 grep -F -- '--server-side --field-manager=scalex-rgw-credential-bridge' \
   "$MOCK_KUBECTL_ARGS" >/dev/null
 
-if rg -n -- '--arg (access|secret)|jsonpath=.*AWS_' \
+if grep -nE -- '--arg (access|secret)|jsonpath=.*AWS_' \
   "$ROOT/scripts/bootstrap-rgw-credentials.sh" >/dev/null; then
   echo "credential bridge must not expose secret data through process arguments" >&2
   exit 1

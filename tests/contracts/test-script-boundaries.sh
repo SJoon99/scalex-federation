@@ -9,13 +9,13 @@ fail() {
 }
 
 contains_direct_mutation() {
-  rg -n --glob '*.sh' --glob '*.yaml' --glob '*.yml' \
+  grep -RInE --include='*.sh' --include='*.yaml' --include='*.yml' \
     'kubectl([[:space:]\\]|[^[:space:]])*[[:space:]]+(apply|create|delete|edit|patch|replace|rollout|scale|set)([[:space:]]|$)' \
     "$@" >/dev/null
 }
 
 contains_credential_materialization() {
-  rg -n --glob '*.sh' --glob '*.yaml' --glob '*.yml' \
+  grep -RInE --include='*.sh' --include='*.yaml' --include='*.yml' \
     '(create[[:space:]]+secret|--from-literal|stringData:|AWS_(ACCESS_KEY_ID|SECRET_ACCESS_KEY)[[:space:]]*=)' \
     "$@" >/dev/null
 }
@@ -25,7 +25,7 @@ cuty_bootstrap="$ROOT/scripts/bootstrap-cuty-rgw-credentials.sh"
 test -x "$poc_bootstrap" || fail "approved POC credential bridge is missing"
 test -x "$cuty_bootstrap" || fail "approved Cuty credential bootstrap is missing"
 "$ROOT/tests/test-credential-bridge.sh" >/dev/null
-if rg -n -- '--arg (access|secret)|jsonpath=.*AWS_' "$poc_bootstrap" >/dev/null; then
+if grep -nE -- '--arg (access|secret)|jsonpath=.*AWS_' "$poc_bootstrap" >/dev/null; then
   fail "POC credential bridge exposes credential material through process arguments"
 fi
 
@@ -52,18 +52,18 @@ fi
 
 test -z "$(find "$ROOT/releases/poc/rgw-analysis-web/dependencies" -type f \( -name '*.yaml' -o -name '*.yml' \) -print -quit)" ||
   fail "POC dependencies must not contain deployable YAML"
-rg -Fq 'TARGET_NAMESPACE=scalex-cuty-rgw-analysis-web' "$cuty_bootstrap" ||
+grep -Fq 'TARGET_NAMESPACE=scalex-cuty-rgw-analysis-web' "$cuty_bootstrap" ||
   fail "Cuty bootstrap target namespace drifted"
-rg -Fq 'TARGET_SECRET=scalex-cuty-rgw' "$cuty_bootstrap" ||
+grep -Fq 'TARGET_SECRET=scalex-cuty-rgw' "$cuty_bootstrap" ||
   fail "Cuty bootstrap target Secret drifted"
-rg -Fq '"access-key-id": .data.AWS_ACCESS_KEY_ID' "$cuty_bootstrap" || fail "Cuty access key contract drifted"
-rg -Fq '"secret-access-key": .data.AWS_SECRET_ACCESS_KEY' "$cuty_bootstrap" || fail "Cuty secret key contract drifted"
-rg -Fq 'apply --server-side' "$cuty_bootstrap" || fail "Cuty bootstrap must use server-side apply"
-if rg -n -- '--arg (access|secret|session)|jsonpath=.*AWS_' "$cuty_bootstrap" >/dev/null; then
+grep -Fq '"access-key-id": .data.AWS_ACCESS_KEY_ID' "$cuty_bootstrap" || fail "Cuty access key contract drifted"
+grep -Fq '"secret-access-key": .data.AWS_SECRET_ACCESS_KEY' "$cuty_bootstrap" || fail "Cuty secret key contract drifted"
+grep -Fq 'apply --server-side' "$cuty_bootstrap" || fail "Cuty bootstrap must use server-side apply"
+if grep -nE -- '--arg (access|secret|session)|jsonpath=.*AWS_' "$cuty_bootstrap" >/dev/null; then
   fail "Cuty bootstrap exposes credential material through process arguments"
 fi
 mapfile -t cuty_mutations < <(
-  rg -n 'kubectl([[:space:]\\]|[^[:space:]])*[[:space:]]+(apply|create|delete|edit|patch|replace|rollout|scale|set)([[:space:]]|$)' \
+  grep -nE 'kubectl([[:space:]\\]|[^[:space:]])*[[:space:]]+(apply|create|delete|edit|patch|replace|rollout|scale|set)([[:space:]]|$)' \
     "$cuty_bootstrap"
 )
 [ "${#cuty_mutations[@]}" -eq 2 ] || fail "Cuty bootstrap mutation surface drifted"
@@ -71,7 +71,7 @@ printf '%s\n' "${cuty_mutations[@]}" | grep -Fq 'create namespace "$TARGET_NAMES
   fail "Cuty bootstrap namespace mutation drifted"
 printf '%s\n' "${cuty_mutations[@]}" | grep -Fq 'apply --server-side' ||
   fail "Cuty bootstrap Secret mutation drifted"
-rg -Fq './scripts/rgw-analysis-web/observe-release.sh' "$ROOT/.github/workflows/runtime-observation.yaml" ||
+grep -Fq './scripts/rgw-analysis-web/observe-release.sh' "$ROOT/.github/workflows/runtime-observation.yaml" ||
   fail "runtime workflow must invoke the read-only observer"
 
 tmp="$(mktemp -d)"
