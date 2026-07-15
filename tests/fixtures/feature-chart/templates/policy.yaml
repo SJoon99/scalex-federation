@@ -1,0 +1,15 @@
+apiVersion: policy.karmada.io/v1alpha1
+kind: PropagationPolicy
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  resourceSelectors:
+    - apiVersion: batch/v1
+      kind: Job
+      name: {{ .Release.Name }}
+      namespace: {{ .Release.Namespace }}
+  placement:
+    clusterAffinity:
+      clusterNames:
+        - fixture-member

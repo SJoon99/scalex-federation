@@ -1,7 +1,0 @@
-{
-  "apiVersion":"batch/v1",
-  "kind":"Job",
-  "metadata":{"name":"rgw-analysis-web-analyzer","namespace":"scalex-rgw-analysis-web"},
-  "spec":{"template":{"spec":{"containers":[{"name":"analyzer","image":"__FLOW_IMAGE__"}]}}},
-  "status":{"succeeded":1,"failed":0,"conditions":[{"type":"Complete","status":"True"}]}
-}

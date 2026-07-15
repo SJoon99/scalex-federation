@@ -1,29 +1,22 @@
-# 공통 소유권 계약
+# Single-values ownership contract
 
-ScaleX 배포는 **Infra capability**, **release dependency**, **feature workload**를
-분리한다.
+This branch tests a compact release catalog while preserving the renewed
+ownership boundaries.
 
-| 계층 | 대표 리소스 | 적용 경로 |
+| Layer | Owns in this experiment | Does not own |
 |---|---|---|
-| Infra | Cilium, Rook/Ceph, ObjectStore, StorageClass, RGW endpoint | `eecs-k8s` + `*-k8s` → Tower Argo direct |
-| Release dependency | 기능 namespace의 OBC/PVC, non-secret binding spec | Federation → Tower Argo → Karmada |
-| Workload | Job, Deployment, Service, application ConfigMap | feature Helm + Federation values → Karmada |
-| Placement | PropagationPolicy, OverridePolicy | Federation → Karmada |
-| Runtime secret binding | Rook 생성 credential과 실제 bucket 이름 | 공통 management-plane runner → Karmada |
+| Federation | Bootstrap, Karmada API release Namespace creation, one catalog, lifecycle state, pinned chart revision, minimal Helm values | OBCs, RuntimeBinding objects, dependency manifests, standalone policy YAML |
+| Dev feature chart | Workload templates and Karmada `PropagationPolicy` / `OverridePolicy` templates | Bucket provisioning, credential delivery, Infra setup |
+| `*-k8s` / Infra | Bucket/OBC lifecycle, storage capability, cross-cluster credential delivery, existing runtime Secret/ConfigMap surface | Feature workload source |
+| Karmada | Replication of chart-rendered original resources | Direct Argo ownership of member-cluster copies |
 
-Feature chart는 cluster-neutral workload만 렌더링하고 기존 Secret/ConfigMap 이름을
-참조한다. Federation dependency가 claim lifecycle과 versioned RuntimeBinding을
-소유하며, 공통 runner가 feature 이름과 무관하게 dynamic
-provisioning 출력을 정규화한다. Secret 값은 Git에 저장하지 않는다.
+Federation values may reference existing runtime objects, for example
+`rgw-analysis-web-runtime` and `rgw-analysis-web-s3`, but must not define how
+those objects are provisioned or copied across clusters.
 
-새 feature는 별도 bridge script를 만들지 않는다. `runtime-binding.yaml`의
-`sourceCluster`가 secure member kubeconfig directory의 파일을 선택하며, 현재 공통
-adapter는 `rook-obc-s3/v1alpha1`만 지원한다.
+Feature chart는 필요한 경우 release namespace 안의 `Role`/`RoleBinding`을 소유할 수 있다.
+다만 `RoleBinding`은 같은 render에 포함된 local `Role`만 참조하며, `ClusterRole` 참조나
+다른 namespace의 ServiceAccount subject는 admission에서 거부된다.
 
-Tower Argo의 Federation destination은 `karmada` 하나다. Karmada가 Push mode로 B/C에
-복제하며 Argo가 같은 member 리소스를 직접 관리하지 않는다. 선언·render 성공은
-runtime 성공 증거가 아니므로 ResourceBinding, member workload와 HTTP 결과를 별도로
-관찰한다.
-
-Cluster-scoped resource나 공유 operator는 Infra Layer에 먼저 설치한다. Federation은
-그 capability를 소비하는 namespaced instance만 생성한다.
+An active catalog release must point at a chart revision that renders Karmada
+policies. The current pinned POC chart does not, so the entry is disabled.

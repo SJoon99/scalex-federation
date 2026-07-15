@@ -8,11 +8,18 @@ spec:
   goTemplateOptions:
     - missingkey=error
   generators:
-    - git:
-        repoURL: https://github.com/SJoon99/scalex-federation.git
-        revision: main
-        files:
-          - path: releases/*/*/release.yaml
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/SJoon99/scalex-federation.git
+              revision: experiment/single-values-catalog
+              files:
+                - path: values.yaml
+          - list:
+              elementsYaml: '{{ .releases | toJson }}'
+      selector:
+        matchLabels:
+          state: active
   template:
     metadata:
       name: 'federation-{{ .environment }}-{{ .name }}'
@@ -23,27 +30,15 @@ spec:
         scalex.io/release: '{{ .name }}'
     spec:
       project: scalex-federation
-      sources:
-        - repoURL: '{{ .source.repoURL }}'
-          targetRevision: '{{ .source.revision }}'
-          path: '{{ .source.path }}'
-          helm:
-            releaseName: '{{ .name }}'
-            valueFiles:
-              - '$federation/{{ .values.path }}'
-        - repoURL: https://github.com/SJoon99/scalex-federation.git
-          targetRevision: main
-          ref: federation
-          path: '{{ .policy.path }}'
-          directory:
-            recurse: true
-        - repoURL: https://github.com/SJoon99/scalex-federation.git
-          targetRevision: main
-          path: '{{ .dependencies.path }}'
-          directory:
-            recurse: true
+      source:
+        repoURL: '{{ .source.repoURL }}'
+        targetRevision: '{{ .source.revision }}'
+        path: '{{ .source.path }}'
+        helm:
+          releaseName: '{{ .helm.releaseName }}'
+          values: '{{ .helm.values }}'
       destination:
-        name: karmada
+        name: '{{ .destination.name }}'
         namespace: '{{ .namespace }}'
       syncPolicy:
         automated:

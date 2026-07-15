@@ -4,19 +4,15 @@ metadata:
   name: scalex-federation
   namespace: argo
 spec:
-  description: ScaleX User/Dev workloads reconciled into the Tower Karmada API.
+  description: ScaleX single-catalog experiment reconciled into the Tower Karmada API.
   sourceRepos:
-    - https://github.com/SJoon99/scalex-federation.git
     - https://github.com/SJoon99/scalex-feature-poc.git
-    - https://github.com/BellTigerLee/smurf-child.git
   destinations:
     - name: karmada
       namespace: scalex-*
   clusterResourceWhitelist:
     - group: ""
       kind: Namespace
-    - group: work.karmada.io
-      kind: ClusterResourceBinding
   namespaceResourceWhitelist:
     - group: ""
       kind: ConfigMap
@@ -26,13 +22,23 @@ spec:
       kind: Service
     - group: apps
       kind: Deployment
+    - group: apps
+      kind: StatefulSet
+    - group: apps
+      kind: DaemonSet
     - group: batch
       kind: Job
-    - group: objectbucket.io
-      kind: ObjectBucketClaim
+    - group: batch
+      kind: CronJob
+    - group: networking.k8s.io
+      kind: Ingress
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+    - group: rbac.authorization.k8s.io
+      kind: Role
+    - group: rbac.authorization.k8s.io
+      kind: RoleBinding
     - group: policy.karmada.io
       kind: PropagationPolicy
     - group: policy.karmada.io
       kind: OverridePolicy
-    - group: work.karmada.io
-      kind: ResourceBinding

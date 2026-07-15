@@ -1,28 +1,21 @@
 # bootstrap
 
-Tower Argo CD가 Federation release를 발견하는 고정 진입점이다.
+Tower Argo CD reads these two manifests as the fixed entrypoint for the
+single-values catalog experiment.
 
-| 파일 | 역할 |
+| File | Role |
 |---|---|
-| `appproject.yaml` | 허용 source, Karmada destination, namespaced resource 경계 |
-| `applicationset.yaml` | `releases/*/*/release.yaml`을 발견해 release별 Application 생성 |
+| `appproject.yaml` | Allows the feature chart source, core `Namespace`, and namespaced workload plus Karmada policy kinds in the `karmada` destination. |
+| `applicationset.yaml` | Expands active entries from root `values.yaml` into release Applications. |
 
-Tower root Application이 이 두 manifest를 한 번 읽는다. 이후 ApplicationSet은 각
-release를 다음 세 source로 구성한다.
+The ApplicationSet uses native generator semantics only:
 
-1. feature Helm chart + Federation `values.yaml`
-2. Federation `policy/` Karmada policy directory
-3. Federation `dependencies/` plain-YAML directory
+1. Git file generator reads root `values.yaml` from
+   `experiment/single-values-catalog`.
+2. List generator expands `{{ .releases | toJson }}` with `elementsYaml`.
+3. Generator selector `state=active` filters out disabled releases.
+4. The template points each active Application at the pinned feature chart and
+   passes the catalog's inline Helm values.
 
-policy와 dependency source는 `directory.recurse=true`이므로 별도 Kustomize entrypoint나
-기능별 Application YAML이 필요 없다. `release.yaml` 추가가 release 등록 단위다.
-
-bootstrap은 다음을 관리하지 않는다.
-
-- Karmada 설치와 member join
-- Argo cluster/repository credential
-- private key 또는 runtime Secret 값
-- management-plane RuntimeBinding runner 실행과 member kubeconfig 보관
-
-최초 root Application, `karmada` destination credential, private repository credential은
-여전히 운영 bootstrap 경계다.
+No Federation policy, dependency, ObjectBucketClaim, RuntimeBinding,
+ResourceBinding, or Work source is attached in this experiment.
