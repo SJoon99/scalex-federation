@@ -103,7 +103,7 @@ fi
 
 jq -e '
   .apiVersion == "v1" and
-  .kind == "ConfigMapList" and
+  (.kind == "List" or .kind == "ConfigMapList") and
   (.items | type) == "array" and
   all(.items[];
     .apiVersion == "v1" and

@@ -21,7 +21,7 @@ done
 cat >"$tmp/bindings.json" <<'JSON'
 {
   "apiVersion": "v1",
-  "kind": "ConfigMapList",
+  "kind": "List",
   "items": [
     {
       "apiVersion": "v1",
