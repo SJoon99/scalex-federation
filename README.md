@@ -96,15 +96,20 @@ Secret/ConfigMap 이름을 참조한다.
 Federation OBC --Karmada--> B Rook
                               ├─ Secret credential
                               └─ ConfigMap actual bucket name
-                                         ↓ approved idempotent script
+                                         ↓ common RuntimeBinding runner
                             Karmada runtime Secret + ConfigMap
                                          ↓ propagateDeps
                                        B / C workloads
 ```
 
-스크립트 방식은 현재 POC 규모에서 controller를 만들지 않는 의도적인 최소 구현이다.
-최초 provisioning 또는 OBC output 재생성 때 실행하며, 지속 reconciliation과 자동
-rotation이 필요해질 때 External Secrets/controller로 대체한다.
+`sync-runtime-bindings.sh`는 `scalex.io/runtime-binding=true` 선언을 모두 발견하고,
+각 선언의 `sourceCluster`를 보안 kubeconfig directory의 `<cluster>.kubeconfig`로
+해석한다. release·namespace·target 이름도 선언에서 읽으므로 새 feature를 위해
+별도 script를 만들지 않는다. 현재 지원 type은 `rook-obc-s3/v1alpha1` 하나이며,
+임의 Secret 복사를 허용하지 않는 제한된 공통 adapter다.
+
+현재는 controller 대신 idempotent runner를 명시적으로 실행한다. 지속 reconciliation과
+자동 rotation이 필요해질 때 같은 계약을 Tower CronJob 또는 controller로 승격한다.
 
 ## 기본 원칙
 
@@ -112,6 +117,7 @@ rotation이 필요해질 때 External Secrets/controller로 대체한다.
 - Cluster Infra는 `eecs-k8s`와 각 `*-k8s` repository가 소유한다.
 - Release-scoped claim과 non-secret dependency mapping은 Federation이 소유한다.
 - Feature Helm은 workload와 기존 runtime binding 참조만 소유한다.
+- 새 feature는 dependency와 RuntimeBinding만 선언하고 feature 전용 bridge script를 만들지 않는다.
 - Federation workload는 Tower Argo가 child cluster에 직접 배포하지 않는다.
 - 동일 리소스를 Argo direct 경로와 Karmada가 동시에 관리하지 않는다.
 - Revision은 tag, commit 또는 immutable image digest로 고정한다.

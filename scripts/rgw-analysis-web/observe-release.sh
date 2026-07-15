@@ -71,7 +71,7 @@ if [ "$source_contract" = smurf-child ]; then
 else
   storage_path=s3
   dependencies_path="$(yq e -r '.dependencies.path' "$DESCRIPTOR")"
-  binding_manifest="$ROOT/$dependencies_path/object-storage-binding.yaml"
+  binding_manifest="$ROOT/$dependencies_path/runtime-binding.yaml"
   claim_manifest="$ROOT/$dependencies_path/object-bucket-claim.yaml"
   test -f "$binding_manifest" || fail "storage binding manifest not found"
   test -f "$claim_manifest" || fail "object bucket claim manifest not found"

@@ -9,11 +9,16 @@ ScaleX 배포는 **Infra capability**, **release dependency**, **feature workloa
 | Release dependency | 기능 namespace의 OBC/PVC, non-secret binding spec | Federation → Tower Argo → Karmada |
 | Workload | Job, Deployment, Service, application ConfigMap | feature Helm + Federation values → Karmada |
 | Placement | PropagationPolicy, OverridePolicy | Federation → Karmada |
-| Runtime secret binding | Rook 생성 credential과 실제 bucket 이름 | 승인된 management-plane script → Karmada |
+| Runtime secret binding | Rook 생성 credential과 실제 bucket 이름 | 공통 management-plane runner → Karmada |
 
 Feature chart는 cluster-neutral workload만 렌더링하고 기존 Secret/ConfigMap 이름을
-참조한다. Federation dependency가 claim lifecycle을 소유하며, script가 dynamic
+참조한다. Federation dependency가 claim lifecycle과 versioned RuntimeBinding을
+소유하며, 공통 runner가 feature 이름과 무관하게 dynamic
 provisioning 출력을 정규화한다. Secret 값은 Git에 저장하지 않는다.
+
+새 feature는 별도 bridge script를 만들지 않는다. `runtime-binding.yaml`의
+`sourceCluster`가 secure member kubeconfig directory의 파일을 선택하며, 현재 공통
+adapter는 `rook-obc-s3/v1alpha1`만 지원한다.
 
 Tower Argo의 Federation destination은 `karmada` 하나다. Karmada가 Push mode로 B/C에
 복제하며 Argo가 같은 member 리소스를 직접 관리하지 않는다. 선언·render 성공은

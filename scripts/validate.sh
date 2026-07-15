@@ -320,8 +320,12 @@ for descriptor in "${descriptors[@]}"; do
           .metadata.name == "rgw-analysis-web-storage-binding" and
           .metadata.namespace == $namespace and
           .metadata.labels["scalex.io/release"] == "rgw-analysis-web" and
-          .metadata.labels["scalex.io/component"] == "object-storage-binding" and
+          .metadata.labels["scalex.io/component"] == "runtime-binding" and
+          .metadata.labels["scalex.io/runtime-binding"] == "true" and
+          .metadata.labels["scalex.io/binding-type"] == "rook-obc-s3" and
           .data == {
+            "contractVersion":"v1alpha1",
+            "bindingType":"rook-obc-s3",
             "sourceCluster":"b",
             "sourceNamespace":"scalex-rgw-analysis-web",
             "sourceClaimName":"rgw-analysis-web-bucket",

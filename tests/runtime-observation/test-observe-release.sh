@@ -64,7 +64,7 @@ if [ "$flow_key" = flow ]; then
   sed "s|run-20260714-001|$run_id|g" \
     "$fixture_root/result-smurf-success.html" > "$tmp/fixtures/result.html"
 else
-  binding_manifest="$ROOT/releases/poc/rgw-analysis-web/dependencies/object-storage-binding.yaml"
+  binding_manifest="$ROOT/releases/poc/rgw-analysis-web/dependencies/runtime-binding.yaml"
   claim_manifest="$ROOT/releases/poc/rgw-analysis-web/dependencies/object-bucket-claim.yaml"
   runtime_secret="$(yq e -r '.s3.secretName' "$ROOT/releases/poc/rgw-analysis-web/values.yaml")"
   jq \

@@ -6,8 +6,12 @@ metadata:
   labels:
     app.kubernetes.io/part-of: scalex-federation-poc
     scalex.io/release: rgw-analysis-web
-    scalex.io/component: object-storage-binding
+    scalex.io/component: runtime-binding
+    scalex.io/runtime-binding: "true"
+    scalex.io/binding-type: rook-obc-s3
 data:
+  contractVersion: v1alpha1
+  bindingType: rook-obc-s3
   sourceCluster: b
   sourceNamespace: scalex-rgw-analysis-web
   sourceClaimName: rgw-analysis-web-bucket

@@ -22,7 +22,7 @@ bootstrap은 다음을 관리하지 않는다.
 - Karmada 설치와 member join
 - Argo cluster/repository credential
 - private key 또는 runtime Secret 값
-- management-plane binding script 실행
+- management-plane RuntimeBinding runner 실행과 member kubeconfig 보관
 
 최초 root Application, `karmada` destination credential, private repository credential은
 여전히 운영 bootstrap 경계다.

@@ -57,13 +57,25 @@ YAML은 이 경로에 두면 안 된다.
 - `eecs-k8s`와 `*-k8s`: Rook/Ceph, ObjectStore, bucket StorageClass, RGW endpoint 제공
 - Federation dependency: 기능 namespace의 OBC와 non-secret binding 명세 선언
 - Feature Helm: 정규화된 runtime Secret/ConfigMap 이름만 참조
-- 관리-plane script: member Rook의 OBC 출력 Secret/ConfigMap을 읽어 Karmada runtime
+- 공통 management-plane runner: member Rook의 OBC 출력 Secret/ConfigMap을 읽어 Karmada runtime
   Secret/ConfigMap으로 정규화
 - Karmada: workload의 `propagateDeps: true`로 필요한 runtime dependency를 B/C에 전달
 
 현재 POC의 고정 bucket 이름은 기존 데이터를 보존하는 migration compatibility다.
 새 release는 특별한 호환 사유가 없다면 Rook이 이름을 생성하도록 설계하고, 실제
-`BUCKET_NAME`은 binding script가 OBC ConfigMap에서 읽어 전달한다.
+`BUCKET_NAME`은 공통 RuntimeBinding runner가 OBC ConfigMap에서 읽어 전달한다.
+
+Object Storage를 사용하는 새 release는 `runtime-binding.yaml`에 다음만 선언한다.
+
+- `contractVersion: v1alpha1`
+- `bindingType: rook-obc-s3`
+- source cluster/OBC identity
+- target Secret/ConfigMap identity
+- non-secret endpoint/region
+
+공통 runner가 label로 모든 binding을 발견하므로 release별 script를 추가하지 않는다.
+source/target namespace는 binding namespace와 같아야 하며, 같은 target identity를
+여러 binding이 공유할 수 없다.
 
 ## CI promotion
 
