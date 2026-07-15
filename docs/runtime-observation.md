@@ -22,7 +22,7 @@ run body 전에 environment나 kubeconfig를 읽는 경로도 거부한다.
 관찰 성공에는 다음 증거가 모두 필요하다.
 
 - 모든 named 응답의 exact apiVersion/kind/name/namespace identity
-- Karmada ResourceBindingList/item identity, 예상 workload/OBC의 `b`/`c` placement와 cluster별 `applied: true`
+- Karmada ResourceBindingList/item identity, 예상 workload의 `b`/`c` placement와 cluster별 `applied: true`
 - 양쪽 member의 source-specific native Secret identity와 필수 credential key 존재 여부
 - 양쪽 member의 source-specific runtime ConfigMap identity, release label과 필수 data surface
 - result-web Deployment ready, seeder/analyzer Job complete
@@ -39,8 +39,8 @@ tracked promotion 이후 `BellTigerLee/smurf-child`에는 실제 chart가 렌더
 repository 내부 synthetic Smurf chart를 Helm render해 resource/image/runtime contract도
 독립적으로 계속 검증한다.
 
-RuntimeBinding 기반 release의 실제 bucket 이름은 OBC manifest의 선택적
-`spec.bucketName`을 기대값으로 사용하지 않는다. 먼저 Karmada normalized runtime
+RuntimeBinding 기반 release의 실제 bucket 이름은 Infra OBC 선언의 선택적
+`spec.bucketName`을 관찰 기대값으로 사용하지 않는다. 먼저 Karmada normalized runtime
 ConfigMap의 `S3_BUCKET`을 읽고, 그 값과 B/C에 전파된 runtime ConfigMap이 일치하는지
 확인한다. 따라서 provider-generated bucket 이름도 release values 재렌더링 없이 관찰할
 수 있다.

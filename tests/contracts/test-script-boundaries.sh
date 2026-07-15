@@ -65,27 +65,17 @@ fi
 
 dependency_root="$ROOT/releases/poc/rgw-analysis-web/dependencies"
 mapfile -t dependency_files < <(find "$dependency_root" -type f \( -name '*.yaml' -o -name '*.yml' \) | sort)
-[ "${#dependency_files[@]}" -eq 2 ] || fail "POC dependencies must contain exactly the claim and binding manifests"
+[ "${#dependency_files[@]}" -eq 1 ] || fail "POC dependencies must contain only the runtime binding manifest"
 yq e -o=json -I=0 "${dependency_files[@]}" | jq -s -e '
-  length == 2 and
-  any(.[];
-    .apiVersion == "objectbucket.io/v1alpha1" and
-    .kind == "ObjectBucketClaim" and
-    .metadata.name == "rgw-analysis-web-bucket") and
-  any(.[];
+  length == 1 and
+  (.[0] |
     .apiVersion == "v1" and
     .kind == "ConfigMap" and
     .metadata.name == "rgw-analysis-web-storage-binding" and
     .metadata.labels["scalex.io/runtime-binding"] == "true" and
     .metadata.labels["scalex.io/binding-type"] == "rook-obc-s3" and
     .data.contractVersion == "v1alpha1" and
-    .data.bindingType == "rook-obc-s3") and
-  all(.[];
-    .kind != "Secret" and
-    .kind != "PropagationPolicy" and
-    .kind != "OverridePolicy" and
-    .kind != "Deployment" and
-    .kind != "Job")
+    .data.bindingType == "rook-obc-s3")
 ' >/dev/null || fail "POC dependencies violate the runtime binding boundary"
 
 grep -Fq './scripts/rgw-analysis-web/observe-release.sh' "$ROOT/.github/workflows/runtime-observation.yaml" ||

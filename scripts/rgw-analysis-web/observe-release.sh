@@ -72,9 +72,7 @@ else
   storage_path=s3
   dependencies_path="$(yq e -r '.dependencies.path' "$DESCRIPTOR")"
   binding_manifest="$ROOT/$dependencies_path/runtime-binding.yaml"
-  claim_manifest="$ROOT/$dependencies_path/object-bucket-claim.yaml"
   test -f "$binding_manifest" || fail "storage binding manifest not found"
-  test -f "$claim_manifest" || fail "object bucket claim manifest not found"
   expected_configmap="$(yq e -r '.s3.configMapName' "$VALUES")"
   expected_secret="$(yq e -r '.s3.secretName' "$VALUES")"
   expected_access_key=AWS_ACCESS_KEY_ID
@@ -186,7 +184,7 @@ expected_endpoint_for_context() {
 
 check_bindings() {
   local file="$1"
-  jq -e --arg namespace "$NAMESPACE" --arg profile "$source_contract" '
+  jq -e --arg namespace "$NAMESPACE" '
     def applied($clusters):
       ([.status.aggregatedStatus[]? |
         select(.applied == true) | .clusterName] | sort) == ($clusters | sort);
@@ -201,10 +199,7 @@ check_bindings() {
     placed("batch/v1"; "Job"; "rgw-analysis-web-dataset-seeder"; ["b"]) and
     placed("batch/v1"; "Job"; "rgw-analysis-web-analyzer"; ["c"]) and
     placed("apps/v1"; "Deployment"; "rgw-analysis-web-result-web"; ["b"]) and
-    placed("v1"; "Service"; "rgw-analysis-web-result-web"; ["b"]) and
-    (if $profile == "legacy-poc" then
-      placed("objectbucket.io/v1alpha1"; "ObjectBucketClaim"; "rgw-analysis-web-bucket"; ["b"])
-    else true end)
+    placed("v1"; "Service"; "rgw-analysis-web-result-web"; ["b"])
   ' "$file" >/dev/null || {
     LAST_ERROR="Karmada placement is missing, partial, or not fully applied"
     return 1

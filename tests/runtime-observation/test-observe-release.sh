@@ -65,7 +65,6 @@ if [ "$flow_key" = flow ]; then
     "$fixture_root/result-smurf-success.html" > "$tmp/fixtures/result.html"
 else
   binding_manifest="$ROOT/releases/poc/rgw-analysis-web/dependencies/runtime-binding.yaml"
-  claim_manifest="$ROOT/releases/poc/rgw-analysis-web/dependencies/object-bucket-claim.yaml"
   runtime_secret="$(yq e -r '.s3.secretName' "$ROOT/releases/poc/rgw-analysis-web/values.yaml")"
   jq \
     --arg endpoint "$(yq e -r '.data.endpointUrl' "$binding_manifest")" \
@@ -215,9 +214,6 @@ run_smurf_contract() {
       "$fixture_root/$fixture" |
       sed "s/scalex-rgw-analysis-web/$namespace/g" > "$fixtures/$fixture"
   done
-  jq 'del(.items[] | select(.spec.resource.kind == "ObjectBucketClaim"))' \
-    "$fixtures/bindings.json" > "$fixtures/bindings.filtered.json"
-  mv "$fixtures/bindings.filtered.json" "$fixtures/bindings.json"
   jq \
     --arg namespace "$namespace" \
     --arg secret "$expected_secret" '

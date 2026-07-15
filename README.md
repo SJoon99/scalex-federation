@@ -87,19 +87,18 @@ state만 Tower Argo와 Karmada가 배포한다.
 Nginx로 제공하는 첫 vertical slice다. B/C 이름은 Federation policy에만
 존재하며 feature chart는 cluster-neutral 상태를 유지한다.
 
-이 release의 OBC와 non-secret binding 명세는 Federation `dependencies/`가
-소유하고, OBC만 B로 배치한다. B Infra는 ObjectStore, bucket StorageClass와
-RGW endpoint까지 제공한다. Feature Helm은 workload만 렌더링하며 기존 runtime
-Secret/ConfigMap 이름을 참조한다.
+이 release가 사용하는 OBC는 `b-k8s`가 B Infra dependency로 소유한다.
+Federation `dependencies/`에는 credential이 아닌 runtime binding 명세만 남기고,
+Feature Helm은 workload와 기존 runtime Secret/ConfigMap 이름만 참조한다.
 
 ```text
-Federation OBC --Karmada--> B Rook
-                              ├─ Secret credential
-                              └─ ConfigMap actual bucket name
-                                         ↓ common RuntimeBinding runner
-                            Karmada runtime Secret + ConfigMap
-                                         ↓ propagateDeps
-                                       B / C workloads
+B Infra OBC --> B Rook
+                 ├─ Secret credential
+                 └─ ConfigMap actual bucket name
+                            ↓ common RuntimeBinding runner
+               Karmada runtime Secret + ConfigMap
+                            ↓ propagateDeps
+                          B / C workloads
 ```
 
 `sync-runtime-bindings.sh`는 `scalex.io/runtime-binding=true` 선언을 모두 발견하고,
@@ -114,10 +113,10 @@ Federation OBC --Karmada--> B Rook
 ## 기본 원칙
 
 - Feature source와 build logic은 feature repository가 소유한다.
-- Cluster Infra는 `eecs-k8s`와 각 `*-k8s` repository가 소유한다.
-- Release-scoped claim과 non-secret dependency mapping은 Federation이 소유한다.
+- Cluster Infra와 OBC 같은 외부 dependency는 `eecs-k8s`와 각 `*-k8s` repository가 소유한다.
+- Federation은 non-secret runtime binding과 workload placement만 소유한다.
 - Feature Helm은 workload와 기존 runtime binding 참조만 소유한다.
-- 새 feature는 dependency와 RuntimeBinding만 선언하고 feature 전용 bridge script를 만들지 않는다.
+- 새 feature는 Infra dependency를 해당 cluster repo에 요청하고, 필요한 RuntimeBinding만 Federation에 선언한다.
 - Federation workload는 Tower Argo가 child cluster에 직접 배포하지 않는다.
 - 동일 리소스를 Argo direct 경로와 Karmada가 동시에 관리하지 않는다.
 - Revision은 tag, commit 또는 immutable image digest로 고정한다.

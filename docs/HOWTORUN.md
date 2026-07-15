@@ -8,7 +8,7 @@
 3. `releases/<environment>/<release>/release.yaml`에 full chart SHA,
    values/dependencies/policy path와 promotion mode를 적는다.
 4. `values.yaml`에 모든 image tag+digest와 기존 runtime binding 이름을 기록한다.
-5. release claim/non-secret mapping은 `dependencies/`, placement/override는 `policy/`에 둔다.
+5. Infra dependency는 대상 `*-k8s`에 요청하고, non-secret mapping만 `dependencies/`, placement/override는 `policy/`에 둔다.
 6. 정적 검증 후 PR로 merge한다. CI는 cluster에 직접 apply하지 않는다.
 
 ```bash
@@ -19,7 +19,7 @@ FEATURE_REPOS_ROOT=/path/to/checkouts ./scripts/validate.sh
 
 ## Runtime binding 동기화
 
-Argo sync 후 source cluster의 OBC가 `Bound`이고 Rook 생성 Secret/ConfigMap이 준비된
+Infra Argo sync 후 source cluster의 OBC가 `Bound`이고 Rook 생성 Secret/ConfigMap이 준비된
 상태에서 Tower management-plane에서 공통 runner를 실행한다.
 
 member kubeconfig 디렉터리는 binding의 `sourceCluster`와 파일 이름을 일치시킨다.
@@ -57,8 +57,9 @@ Secret 내용은 출력하지 않는다. target 객체는 binding ConfigMap을 o
 result endpoint를 확인한다.
 
 ```text
-Argo dependencies sync
+B Infra OBC sync
   → source OBC Bound
+  → Federation binding sync
   → common RuntimeBinding runner
   → Karmada runtime binding
   → workload sync/retry
@@ -69,5 +70,5 @@ Argo dependencies sync
 재사용하거나, 새로운 dependency 종류가 필요하면 공통 runner에 경계가 명확한 adapter와
 회귀 테스트를 함께 추가한다. 임의 Secret/resource 복사 기능은 허용하지 않는다.
 
-현재 고정 bucket은 migration 호환용이므로 데이터 정리 승인 없이 OBC/ObjectBucket을
-삭제하지 않는다.
+현재 고정 bucket은 B Infra migration 호환용이므로 데이터 정리 승인 없이
+OBC/ObjectBucket을 삭제하지 않는다.

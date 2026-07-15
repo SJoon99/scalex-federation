@@ -12,7 +12,7 @@ releases/
    └─ <release-name>/
       ├─ release.yaml       # source SHA와 각 source 경로
       ├─ values.yaml        # workload values와 기존 binding 이름
-      ├─ dependencies/      # release-scoped claim·비밀이 아닌 binding 명세
+      ├─ dependencies/      # 비밀이 아닌 runtime binding 명세
       └─ policy/
          ├─ propagation/    # member placement
          └─ overrides/      # Karmada 복제본의 cluster별 차이
@@ -22,17 +22,17 @@ releases/
 |---|---|---|
 | `release.yaml` | namespace, exact chart URL/path/SHA, values/dependency/policy 경로 | mutable branch/tag |
 | `values.yaml` | image tag+digest, workload 설정, 기존 Secret/ConfigMap 이름 | credential 값, cluster placement |
-| `dependencies/` | OBC/PVC 같은 release-scoped claim, non-secret binding specification | CNI/CSI/ObjectStore/StorageClass, workload, Secret, Karmada policy |
-| `policy/propagation/` | workload와 claim의 B/C placement | workload manifest |
+| `dependencies/` | Infra가 제공한 dependency를 참조하는 non-secret binding specification | OBC/PVC, CNI/CSI/ObjectStore/StorageClass, workload, Secret, Karmada policy |
+| `policy/propagation/` | workload의 B/C placement | workload 또는 Infra manifest |
 | `policy/overrides/` | Karmada가 소유한 복제본의 cluster별 endpoint·Service 차이 | Argo direct Infra 수정 |
 
 `dependencies/`는 Helm chart에 넣기 어려운 임의 manifest 저장소가 아니다. 다음 조건을
-모두 만족하는 **release lifecycle dependency**만 둔다.
+모두 만족하는 **runtime binding 명세**만 둔다.
 
-1. 기능 전용 namespace에 속한다.
-2. 해당 release와 함께 생성·폐기된다.
-3. 기존 Infra capability를 소비할 뿐 Infra 자체를 구성하지 않는다.
-4. credential 원문을 포함하지 않는다.
+1. credential 원문 없이 source/target identity만 선언한다.
+2. Infra가 미리 제공한 dependency output을 참조한다.
+3. workload나 cluster-scoped resource를 생성하지 않는다.
+4. 해당 release namespace 밖의 임의 Secret을 복사하지 않는다.
 
 ## 적용 원리
 
@@ -54,16 +54,16 @@ YAML은 이 경로에 두면 안 된다.
 
 ## Object storage 규칙
 
-- `eecs-k8s`와 `*-k8s`: Rook/Ceph, ObjectStore, bucket StorageClass, RGW endpoint 제공
-- Federation dependency: 기능 namespace의 OBC와 non-secret binding 명세 선언
+- `eecs-k8s`와 `*-k8s`: Rook/Ceph, ObjectStore, bucket StorageClass, RGW endpoint와 OBC 제공
+- Federation dependency: Infra OBC output을 가리키는 non-secret binding 명세만 선언
 - Feature Helm: 정규화된 runtime Secret/ConfigMap 이름만 참조
 - 공통 management-plane runner: member Rook의 OBC 출력 Secret/ConfigMap을 읽어 Karmada runtime
   Secret/ConfigMap으로 정규화
 - Karmada: workload의 `propagateDeps: true`로 필요한 runtime dependency를 B/C에 전달
 
-현재 POC의 고정 bucket 이름은 기존 데이터를 보존하는 migration compatibility다.
-새 release는 특별한 호환 사유가 없다면 Rook이 이름을 생성하도록 설계하고, 실제
-`BUCKET_NAME`은 공통 RuntimeBinding runner가 OBC ConfigMap에서 읽어 전달한다.
+현재 POC의 고정 bucket 이름은 기존 데이터를 보존하는 B Infra migration compatibility다.
+새 release의 bucket naming과 lifecycle도 대상 cluster Infra가 결정하고, 실제
+`BUCKET_NAME`은 공통 RuntimeBinding runner가 Infra OBC ConfigMap에서 읽어 전달한다.
 
 Object Storage를 사용하는 새 release는 `runtime-binding.yaml`에 다음만 선언한다.
 

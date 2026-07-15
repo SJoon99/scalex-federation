@@ -113,12 +113,6 @@ for binding in ResourceBinding ClusterResourceBinding; do
     select(.group == "work.karmada.io" and .kind == strenv(BINDING))
   ' "$ROOT/bootstrap/appproject.yaml" >/dev/null || fail "AppProject must expose Karmada child resource: $binding"
 done
-yq e -e '
-  .spec.namespaceResourceWhitelist[] |
-  select(.group == "objectbucket.io" and .kind == "ObjectBucketClaim")
-' "$ROOT/bootstrap/appproject.yaml" >/dev/null ||
-  fail "AppProject must allow release-scoped ObjectBucketClaims"
-
 children="$ROOT/contracts/children.yaml"
 yq e '.' "$children" >/dev/null
 [ "$(yq e -r '.apiVersion' "$children")" = scalex.io/v1alpha1 ] || fail "unsupported children apiVersion"
@@ -304,17 +298,8 @@ for descriptor in "${descriptors[@]}"; do
   case "$source_contract" in
     legacy-poc)
       yq e -o=json -I=0 "$dependency_render" | jq -s -e --arg namespace "$namespace" '
-        length == 2 and
-        any(.[];
-          .apiVersion == "objectbucket.io/v1alpha1" and
-          .kind == "ObjectBucketClaim" and
-          .metadata.name == "rgw-analysis-web-bucket" and
-          .metadata.namespace == $namespace and
-          .metadata.labels["scalex.io/release"] == "rgw-analysis-web" and
-          .metadata.labels["scalex.io/component"] == "object-storage-claim" and
-          .metadata.annotations["scalex.io/bucket-naming-mode"] == "compatibility-fixed" and
-          .spec == {"bucketName":"rgw-analysis-web-poc","storageClassName":"ceph-bucket"}) and
-        any(.[];
+        length == 1 and
+        (.[0] |
           .apiVersion == "v1" and
           .kind == "ConfigMap" and
           .metadata.name == "rgw-analysis-web-storage-binding" and
@@ -337,7 +322,7 @@ for descriptor in "${descriptors[@]}"; do
             "endpointUrl":"http://10.33.142.10",
             "region":"scalex-poc"
           })
-      ' >/dev/null || fail "legacy POC dependencies must contain exactly the storage claim and binding contract"
+      ' >/dev/null || fail "legacy POC dependencies must contain exactly the runtime binding contract"
       [ "$(yq e -r '.s3.configMapName' "$values_file")" = rgw-analysis-web-runtime ] ||
         fail "legacy POC runtime ConfigMap reference drifted"
       [ "$(yq e -r '.s3.secretName' "$values_file")" = rgw-analysis-web-s3 ] ||
@@ -454,20 +439,18 @@ for descriptor in "${descriptors[@]}"; do
     ' >/dev/null || fail "invalid $source_contract RGW override policy contract"
 
   yq e -o=json -I=0 "$policy_render" | jq -s -e \
-    --arg namespace "$namespace" \
-    --arg profile "$source_contract" '
+    --arg namespace "$namespace" '
       def selector($api; $kind; $name): {
         "apiVersion": $api,
         "kind": $kind,
         "name": $name,
         "namespace": $namespace
       };
-      def exact_propagation($name; $selectors; $clusters; $propagate_deps; $spread; $preserve):
+      def exact_propagation($name; $selectors; $clusters; $propagate_deps; $spread):
         .metadata.name == $name and
         (.spec | keys | sort) == (["conflictResolution", "placement", "preemption", "priority",
           "resourceSelectors", "schedulerName"] +
-          (if $propagate_deps == null then [] else ["propagateDeps"] end) +
-          (if $preserve == null then [] else ["preserveResourcesOnDeletion"] end) | sort) and
+          (if $propagate_deps == null then [] else ["propagateDeps"] end) | sort) and
         .spec.conflictResolution == "Abort" and
         .spec.preemption == "Never" and
         .spec.priority == 0 and
@@ -475,24 +458,17 @@ for descriptor in "${descriptors[@]}"; do
         .spec.resourceSelectors == $selectors and
         (if $propagate_deps == null then (.spec.propagateDeps // false) == false
          else .spec.propagateDeps == $propagate_deps end) and
-        (if $preserve == null then (.spec.preserveResourcesOnDeletion // false) == false
-         else .spec.preserveResourcesOnDeletion == $preserve end) and
         .spec.placement == ({"clusterAffinity": {"clusterNames": $clusters}} +
           (if $spread then {"spreadConstraints": [{"spreadByField":"cluster","minGroups":1,"maxGroups":1}]} else {} end));
       [.[] | select(.kind == "PropagationPolicy")] as $policies |
-      ($policies | length) == (if $profile == "legacy-poc" then 4 else 3 end) and
+      ($policies | length) == 3 and
       any($policies[]; exact_propagation("rgw-analysis-web-dataset-seeder-to-b";
-        [selector("batch/v1"; "Job"; "rgw-analysis-web-dataset-seeder")]; ["b"]; true; true; null)) and
+        [selector("batch/v1"; "Job"; "rgw-analysis-web-dataset-seeder")]; ["b"]; true; true)) and
       any($policies[]; exact_propagation("rgw-analysis-web-analyzer-to-c";
-        [selector("batch/v1"; "Job"; "rgw-analysis-web-analyzer")]; ["c"]; true; true; null)) and
+        [selector("batch/v1"; "Job"; "rgw-analysis-web-analyzer")]; ["c"]; true; true)) and
       any($policies[]; exact_propagation("rgw-analysis-web-result-web-to-b";
         [selector("apps/v1"; "Deployment"; "rgw-analysis-web-result-web"),
-         selector("v1"; "Service"; "rgw-analysis-web-result-web")]; ["b"]; true; true; null)) and
-      (if $profile == "legacy-poc" then
-        any($policies[]; exact_propagation("rgw-analysis-web-object-bucket-claim-to-b";
-          [selector("objectbucket.io/v1alpha1"; "ObjectBucketClaim"; "rgw-analysis-web-bucket")];
-          ["b"]; null; false; true))
-       else true end)
+         selector("v1"; "Service"; "rgw-analysis-web-result-web")]; ["b"]; true; true))
     ' >/dev/null || fail "invalid $source_contract RGW propagation policy contract"
 
   helm lint "$chart_dir" -f "$values_file"

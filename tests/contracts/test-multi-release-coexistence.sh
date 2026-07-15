@@ -227,7 +227,6 @@ add_second_release() {
     .images.flow.sourceRevision = strenv(REVISION) |
     .images.web.sourceRevision = strenv(REVISION)
   ' "$release_root/values.yaml"
-  rm -f "$release_root/policy/propagation/object-bucket-claim-to-b.yaml"
   yq -i '
     .spec.overrideRules[0].overriders.plaintext =
       [.spec.overrideRules[0].overriders.plaintext[] | select(.path == "/spec/type")]
