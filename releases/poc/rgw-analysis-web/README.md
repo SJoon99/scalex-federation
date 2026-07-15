@@ -6,8 +6,10 @@ B의 Object Storage 데이터를 C에서 분석하고, 결과를 다시 B의 ngi
 ## 리소스와 소유권
 
 ```text
+B/C Infra (*-k8s + eecs-k8s)
+└─ Namespace/scalex-rgw-analysis-web
+
 B Infra (*-k8s + eecs-k8s)
-├─ Namespace/scalex-rgw-analysis-web (B/C Infra)
 ├─ CephObjectStore/scalex-poc
 ├─ StorageClass/ceph-bucket
 ├─ ObjectBucketClaim/rgw-analysis-web-bucket
