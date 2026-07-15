@@ -1,0 +1,47 @@
+{{- range $release := .Values.releases }}
+{{- if ($release.enabled | default false) }}
+{{- $repo := required "enabled release.repo is required" $release.repo }}
+{{- $revision := required (printf "enabled release.revision is required: %s" $repo) $release.revision }}
+{{- $name := trimSuffix ".git" (base $repo) }}
+{{- if not (regexMatch "^[0-9a-f]{40}$" $revision) }}
+{{- fail (printf "enabled release must use a full immutable Git SHA: %s" $name) }}
+{{- end }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ printf "federation-%s" $name | quote }}
+  namespace: argo
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    app.kubernetes.io/part-of: scalex-federation
+    scalex.io/release: {{ $name | quote }}
+spec:
+  project: scalex-federation
+  source:
+    repoURL: {{ $repo | quote }}
+    targetRevision: {{ $revision | quote }}
+    path: {{ $release.path | default "chart" | quote }}
+    helm:
+      releaseName: {{ $name | quote }}
+{{- with $release.values }}
+      valuesObject:
+{{ toYaml . | nindent 8 }}
+{{- end }}
+  destination:
+    name: karmada
+    namespace: {{ $name | quote }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+{{- end }}
+{{- end }}

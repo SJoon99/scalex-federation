@@ -1,20 +1,18 @@
-# CI and promotion in the single-values experiment
+# CI와 promotion
 
-Promotion would update one catalog entry atomically:
+Feature repository의 GitHub Actions는 source test, image build/scan, Helm lint/template와
+Karmada policy 검증을 완료한 뒤 Federation promotion PR을 만든다.
 
-- `state`: `disabled` until the pinned chart renders required Karmada policies,
-  then `active` when ready for ApplicationSet generation
-- `source.revision`: full immutable chart commit SHA
-- `helm.values`: feature chart가 정의한 최소 배포 override와 기존 runtime
-  Secret/ConfigMap reference
+기본 변경 범위는 한 entry의 다음 필드뿐이다.
 
-Feature repository의 GitHub Actions가 exact source revision, Helm lint/template,
-ApplicationSet active-state contract와 Karmada policy selector를 검증한 뒤 이 repository의
-`values.yaml`을 수정하는 promotion PR을 생성한다.
+```yaml
+repo: https://github.com/SJoon99/scalex-feature-example.git
+revision: <full-immutable-git-sha>
+enabled: true
+```
 
-Federation은 특정 image values key 구조를 강제하지 않는다. Image가 chart 기본값에 있든
-catalog override에 있든 최종 Helm render의 모든 workload image가 immutable digest를
-사용해야 한다.
+CI는 child cluster나 Karmada API에 직접 apply하지 않는다. Federation PR merge 후 Tower
+Argo가 Helm chart를 렌더링하며, Git revert가 release rollback 기준이 된다.
 
-이 비교 branch 자체에는 별도 hosted workflow, `scripts/`, `tests/`를 두지 않는다. CI는
-cluster에 직접 배포하지 않고 Federation PR 생성까지만 담당한다.
+활성 entry는 full SHA만 허용한다. `main`, mutable tag, SHA placeholder는 Helm render
+단계에서 거부한다.

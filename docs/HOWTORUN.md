@@ -1,13 +1,43 @@
-# How to promote a catalog entry
+# Helm app-of-apps 실행과 승격
 
-1. Find the release entry in root `values.yaml`.
-2. Replace the temporary source with the feature repository's exact chart SHA.
-3. Match entry `name`, namespace, source repository basename, and Helm release name.
-4. Replace inline `helm.values` with the feature-specific deployment values.
-5. Confirm Infra dependencies and cross-cluster credentials already exist.
-6. Change only that entry from `state: disabled` to `state: active`.
-7. Review and merge the Federation PR.
+## Feature repository 계약
 
-This comparison branch has no repository-local validation script or test suite.
-Helm lint/template and Karmada policy checks belong to the feature repository's
-GitHub Actions before it opens the Federation promotion PR.
+각 기능 repo는 다음 공통 계약을 따른다.
+
+- repository basename: `scalex-feature-*`
+- Helm chart 기본 경로: `chart`
+- workload와 namespaced Karmada policy를 같은 chart에서 렌더링
+- Infra가 제공한 Secret/ConfigMap 등 dependency는 이름으로 참조
+
+## Release 등록
+
+`values.yaml`에 entry 하나를 추가한다.
+
+```yaml
+releases:
+  - repo: https://github.com/SJoon99/scalex-feature-example.git
+    revision: <full-git-sha>
+    enabled: false
+```
+
+1. feature CI에서 chart lint/template와 Karmada policy selector를 검증한다.
+2. 검증된 full Git SHA를 `revision`에 기록한다.
+3. Infra dependency와 credential 전달 경로를 확인한다.
+4. 같은 promotion PR에서 `enabled: true`로 변경한다.
+5. Tower Argo가 Federation chart를 다시 렌더링한다.
+6. 생성된 child Application이 Karmada API로 sync한다.
+
+entry를 다시 비활성화하거나 제거하면 parent chart가 child Application을 prune하고,
+Application finalizer가 Karmada API의 해당 release 리소스도 함께 정리한다.
+
+기본 경로가 `chart`가 아니면 `path`를, 배포별 override가 꼭 필요하면 `values`를 entry에
+추가할 수 있다.
+
+## 로컬 확인
+
+```bash
+helm lint .
+helm template scalex-federation . --namespace argo
+```
+
+현재 비교 entry는 모두 비활성화되어 있으므로 기본 render 결과에는 AppProject만 존재한다.

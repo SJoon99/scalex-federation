@@ -1,0 +1,73 @@
+{{- $seen := dict -}}
+{{- range $release := .Values.releases }}
+{{- $repo := required "release.repo is required" $release.repo }}
+{{- if not (hasSuffix ".git" $repo) }}
+{{- fail (printf "feature repository URL must end in .git: %s" $repo) }}
+{{- end }}
+{{- $name := trimSuffix ".git" (base $repo) }}
+{{- if not (regexMatch "^scalex-feature-[a-z0-9-]+$" $name) }}
+{{- fail (printf "feature repository basename must match scalex-feature-*: %s" $name) }}
+{{- end }}
+{{- if gt (len $name) 52 }}
+{{- fail (printf "feature repository basename is too long for federation-<name>: %s" $name) }}
+{{- end }}
+{{- if hasKey $seen $name }}
+{{- fail (printf "duplicated feature repository basename: %s" $name) }}
+{{- end }}
+{{- $_ := set $seen $name true }}
+{{- end }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: scalex-federation
+  namespace: argo
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  description: ScaleX feature workloads reconciled into the Tower Karmada API.
+{{- if empty .Values.releases }}
+  sourceRepos: []
+{{- else }}
+  sourceRepos:
+{{- range $release := .Values.releases }}
+    - {{ $release.repo | quote }}
+{{- end }}
+{{- end }}
+  destinations:
+    - name: karmada
+      namespace: scalex-feature-*
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: PersistentVolumeClaim
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: ServiceAccount
+    - group: apps
+      kind: DaemonSet
+    - group: apps
+      kind: Deployment
+    - group: apps
+      kind: StatefulSet
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+    - group: batch
+      kind: CronJob
+    - group: batch
+      kind: Job
+    - group: networking.k8s.io
+      kind: Ingress
+    - group: policy.karmada.io
+      kind: OverridePolicy
+    - group: policy.karmada.io
+      kind: PropagationPolicy
+    - group: rbac.authorization.k8s.io
+      kind: Role
+    - group: rbac.authorization.k8s.io
+      kind: RoleBinding

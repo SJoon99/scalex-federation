@@ -1,22 +1,29 @@
-# Single-values ownership contract
+# 소유권 계약
 
-This branch tests a compact release catalog while preserving the renewed
-ownership boundaries.
+| 계층 | 책임 |
+|---|---|
+| feature repository | source, image, Helm workload, PropagationPolicy/OverridePolicy |
+| `scalex-federation` values | feature repo 등록, immutable revision, 활성 상태, 선택적 최소 override |
+| `scalex-federation` Helm templates | AppProject와 repo별 Argo Application 렌더링 |
+| `eecs-k8s` + `*-k8s` | CNI/CSI, storage, bucket/OBC, runtime Secret/ConfigMap 등 Infra dependency |
+| Tower Argo | Federation chart 및 생성된 child Application reconcile |
+| Tower Karmada | policy 해석 후 member cluster에 Push |
 
-| Layer | Owns in this experiment | Does not own |
-|---|---|---|
-| Federation | Bootstrap, Karmada API release Namespace creation, feature-repo keyed catalog, lifecycle state, pinned chart revision, minimal Helm values | OBCs, RuntimeBinding objects, dependency manifests, standalone policy YAML |
-| Dev feature chart | Workload templates and Karmada `PropagationPolicy` / `OverridePolicy` templates | Bucket provisioning, credential delivery, Infra setup |
-| `*-k8s` / Infra | Bucket/OBC lifecycle, storage capability, cross-cluster credential delivery, existing runtime Secret/ConfigMap surface | Feature workload source |
-| Karmada | Replication of chart-rendered original resources | Direct Argo ownership of member-cluster copies |
+## 파생 identity
 
-Federation values may reference existing runtime objects, for example
-`rgw-analysis-web-runtime` and `rgw-analysis-web-s3`, but must not define how
-those objects are provisioned or copied across clusters.
+repo basename을 단일 identity로 사용한다.
 
-Feature chart는 필요한 경우 release namespace 안의 `Role`/`RoleBinding`을 소유할 수 있다.
-다만 `RoleBinding`은 같은 render에 포함된 local `Role`만 참조하며, `ClusterRole` 참조나
-다른 namespace의 ServiceAccount subject는 feature CI에서 거부해야 한다.
+```text
+repo: https://github.com/SJoon99/scalex-feature-example.git
+name/namespace/Helm releaseName: scalex-feature-example
+```
 
-An active catalog release must point at its own chart revision that renders
-Karmada policies. All ten current comparison entries remain disabled.
+별도 name, namespace, destination을 values에 반복하지 않는다. 모든 feature Application은
+고정된 `karmada` destination을 사용한다.
+
+## 단일 writer
+
+Argo direct Infra 경로와 Federation/Karmada 경로가 동일한
+`cluster + namespace + apiVersion/kind + name`을 함께 소유하지 않는다. Cluster-scoped
+operator와 CRD는 Infra Layer가 소유하고, feature chart는 namespaced workload와 policy를
+소유한다.

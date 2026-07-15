@@ -1,0 +1,7 @@
+---
+apiVersion: v2
+name: scalex-federation
+description: Render feature repositories into Argo CD Applications targeting Karmada
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
