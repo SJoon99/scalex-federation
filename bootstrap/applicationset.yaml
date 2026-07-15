@@ -10,9 +10,12 @@ spec:
   generators:
     - git:
         repoURL: https://github.com/SJoon99/scalex-federation.git
-        revision: main
+        revision: experiment/release-per-directory
         files:
           - path: releases/*/*/release.yaml
+      selector:
+        matchLabels:
+          state: active
   template:
     metadata:
       name: 'federation-{{ .environment }}-{{ .name }}'
@@ -32,16 +35,8 @@ spec:
             valueFiles:
               - '$federation/{{ .values.path }}'
         - repoURL: https://github.com/SJoon99/scalex-federation.git
-          targetRevision: main
+          targetRevision: experiment/release-per-directory
           ref: federation
-          path: '{{ .policy.path }}'
-          directory:
-            recurse: true
-        - repoURL: https://github.com/SJoon99/scalex-federation.git
-          targetRevision: main
-          path: '{{ .dependencies.path }}'
-          directory:
-            recurse: true
       destination:
         name: karmada
         namespace: '{{ .namespace }}'

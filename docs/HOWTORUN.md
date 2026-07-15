@@ -1,73 +1,29 @@
-# Child feature 연결 및 실행
+# Release 등록과 cutover
 
-## 새 feature release 등록
+## Feature 준비
 
-1. feature repository에 cluster-neutral Helm chart, image build와 테스트를 완성한다.
-2. exact repository URL/chart path를 `contracts/children.yaml`과
-   `bootstrap/appproject.yaml`에 wildcard 없이 동일하게 등록한다.
-3. `releases/<environment>/<release>/release.yaml`에 full chart SHA,
-   values/dependencies/policy path와 promotion mode를 적는다.
-4. `values.yaml`에 모든 image tag+digest와 기존 runtime binding 이름을 기록한다.
-5. release claim/non-secret mapping은 `dependencies/`, placement/override는 `policy/`에 둔다.
-6. 정적 검증 후 PR로 merge한다. CI는 cluster에 직접 apply하지 않는다.
+Feature repository가 다음을 하나의 Helm chart로 렌더링해야 한다.
 
-```bash
-FEATURE_REPOS_ROOT=/path/to/checkouts ./scripts/validate.sh
-./tests/test-runtime-bindings.sh
-./tests/contracts/test-script-boundaries.sh
-```
+- workload와 application ConfigMap/ServiceAccount
+- namespaced `PropagationPolicy`
+- 필요한 namespaced `OverridePolicy`
+- 기존 Infra dependency의 Secret/ConfigMap reference
 
-## Runtime binding 동기화
+로컬 직접 설치를 지원한다면 `karmada.enabled=false` 같은 chart option으로 policy
+template를 비활성화한다. Federation 경로에서는 반드시 policy가 렌더링되어야 한다.
 
-Argo sync 후 source cluster의 OBC가 `Bound`이고 Rook 생성 Secret/ConfigMap이 준비된
-상태에서 Tower management-plane에서 공통 runner를 실행한다.
+## Federation 등록
 
-member kubeconfig 디렉터리는 binding의 `sourceCluster`와 파일 이름을 일치시킨다.
-
-```text
-/secure/member-kubeconfigs/
-├── b.kubeconfig
-└── c.kubeconfig
-```
-
-모든 release의 binding을 label로 조회해 동기화한다.
+1. exact repository URL을 `bootstrap/appproject.yaml` sourceRepos에 추가한다.
+2. `releases/<environment>/<name>/release.yaml`과 `values.yaml`을 만든다.
+3. 검증된 full source SHA와 필요한 환경별 values를 기록한다.
+4. Infra dependency와 교차 클러스터 credential이 준비될 때까지 `state: disabled`를 유지한다.
+5. 모든 gate 통과 후 한 PR에서 revision/values와 `state: active`를 승격한다.
 
 ```bash
-KARMADA_KUBECONFIG=/path/to/karmada-kubeconfig \
-MEMBER_KUBECONFIG_DIR=/secure/member-kubeconfigs \
-./scripts/sync-runtime-bindings.sh --all
+FEATURE_REPOS_ROOT=/path/to/feature-checkouts ./scripts/validate.sh
+./tests/test-validation.sh
 ```
 
-하나의 binding만 재처리할 수도 있다.
-
-```bash
-KARMADA_KUBECONFIG=/path/to/karmada-kubeconfig \
-MEMBER_KUBECONFIG_DIR=/secure/member-kubeconfigs \
-./scripts/sync-runtime-bindings.sh \
-  --binding scalex-rgw-analysis-web/rgw-analysis-web-storage-binding
-```
-
-runner는 `scalex.io/runtime-binding=true` ConfigMap을 발견하고 `sourceCluster`에 해당하는
-kubeconfig로 source output을 읽는다. 현재 지원 adapter는
-`rook-obc-s3/v1alpha1`이며, Karmada에 normalized Secret+ConfigMap을 server-side apply한다.
-Secret 내용은 출력하지 않는다. target 객체는 binding ConfigMap을 owner로 가져 binding
-삭제 시 함께 정리된다.
-
-완료 후 release를 다시 sync하여 one-shot Job을 재실행하고 ResourceBinding, member Pod,
-result endpoint를 확인한다.
-
-```text
-Argo dependencies sync
-  → source OBC Bound
-  → common RuntimeBinding runner
-  → Karmada runtime binding
-  → workload sync/retry
-  → runtime observation
-```
-
-새 feature는 feature 전용 credential script를 추가하지 않는다. 지원 중인 binding type을
-재사용하거나, 새로운 dependency 종류가 필요하면 공통 runner에 경계가 명확한 adapter와
-회귀 테스트를 함께 추가한다. 임의 Secret/resource 복사 기능은 허용하지 않는다.
-
-현재 고정 bucket은 migration 호환용이므로 데이터 정리 승인 없이 OBC/ObjectBucket을
-삭제하지 않는다.
+`FEATURE_REPOS_ROOT` 아래 checkout 디렉터리 이름은 repository basename과 같아야 한다.
+예를 들어 `scalex-feature-poc.git`은 `<root>/scalex-feature-poc`에서 찾는다.

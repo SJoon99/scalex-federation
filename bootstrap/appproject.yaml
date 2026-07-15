@@ -15,8 +15,6 @@ spec:
   clusterResourceWhitelist:
     - group: ""
       kind: Namespace
-    - group: work.karmada.io
-      kind: ClusterResourceBinding
   namespaceResourceWhitelist:
     - group: ""
       kind: ConfigMap
@@ -26,13 +24,21 @@ spec:
       kind: Service
     - group: apps
       kind: Deployment
+    - group: apps
+      kind: StatefulSet
+    - group: apps
+      kind: DaemonSet
     - group: batch
       kind: Job
-    - group: objectbucket.io
-      kind: ObjectBucketClaim
+    - group: batch
+      kind: CronJob
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+    - group: rbac.authorization.k8s.io
+      kind: Role
+    - group: rbac.authorization.k8s.io
+      kind: RoleBinding
     - group: policy.karmada.io
       kind: PropagationPolicy
     - group: policy.karmada.io
       kind: OverridePolicy
-    - group: work.karmada.io
-      kind: ResourceBinding
