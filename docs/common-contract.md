@@ -5,7 +5,7 @@ ownership boundaries.
 
 | Layer | Owns in this experiment | Does not own |
 |---|---|---|
-| Federation | Bootstrap, Karmada API release Namespace creation, one catalog, lifecycle state, pinned chart revision, minimal Helm values | OBCs, RuntimeBinding objects, dependency manifests, standalone policy YAML |
+| Federation | Bootstrap, Karmada API release Namespace creation, feature-repo keyed catalog, lifecycle state, pinned chart revision, minimal Helm values | OBCs, RuntimeBinding objects, dependency manifests, standalone policy YAML |
 | Dev feature chart | Workload templates and Karmada `PropagationPolicy` / `OverridePolicy` templates | Bucket provisioning, credential delivery, Infra setup |
 | `*-k8s` / Infra | Bucket/OBC lifecycle, storage capability, cross-cluster credential delivery, existing runtime Secret/ConfigMap surface | Feature workload source |
 | Karmada | Replication of chart-rendered original resources | Direct Argo ownership of member-cluster copies |

@@ -5,7 +5,7 @@ Promotion would update one catalog entry atomically:
 - `state`: `disabled` until the pinned chart renders required Karmada policies,
   then `active` when ready for ApplicationSet generation
 - `source.revision`: full immutable chart commit SHA
-- `helm.values`: feature chart가 정의한 최소 환경 override와 기존 runtime
+- `helm.values`: feature chart가 정의한 최소 배포 override와 기존 runtime
   Secret/ConfigMap reference
 
 Feature repository의 GitHub Actions가 exact source revision, Helm lint/template,

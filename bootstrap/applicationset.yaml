@@ -22,11 +22,10 @@ spec:
           state: active
   template:
     metadata:
-      name: 'federation-{{ .environment }}-{{ .name }}'
+      name: 'federation-{{ .name }}'
       namespace: argo
       labels:
         app.kubernetes.io/part-of: scalex-federation
-        scalex.io/environment: '{{ .environment }}'
         scalex.io/release: '{{ .name }}'
     spec:
       project: scalex-federation

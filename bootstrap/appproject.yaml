@@ -7,6 +7,15 @@ spec:
   description: ScaleX single-catalog experiment reconciled into the Tower Karmada API.
   sourceRepos:
     - https://github.com/SJoon99/scalex-feature-poc.git
+    - https://github.com/SJoon99/scalex-feature-dataset-ingest.git
+    - https://github.com/SJoon99/scalex-feature-dataset-catalog.git
+    - https://github.com/SJoon99/scalex-feature-batch-analyzer.git
+    - https://github.com/SJoon99/scalex-feature-model-training.git
+    - https://github.com/SJoon99/scalex-feature-model-serving.git
+    - https://github.com/SJoon99/scalex-feature-notebook-workspace.git
+    - https://github.com/SJoon99/scalex-feature-event-processor.git
+    - https://github.com/SJoon99/scalex-feature-report-generator.git
+    - https://github.com/SJoon99/scalex-feature-alert-dispatcher.git
   destinations:
     - name: karmada
       namespace: scalex-*
