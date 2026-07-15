@@ -66,6 +66,9 @@ cluster-specific overrides.
 - Cutover is blocked until the pinned feature chart renders the required
   policies.
 
+기능이 10개로 증가했을 때에도 하나의 파일을 공유하는 모습은
+[`docs/ten-feature-example.md`](docs/ten-feature-example.md)에서 확인한다.
+
 ## Validate locally
 
 ```bash
