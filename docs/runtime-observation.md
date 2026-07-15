@@ -22,7 +22,7 @@ run body 전에 environment나 kubeconfig를 읽는 경로도 거부한다.
 관찰 성공에는 다음 증거가 모두 필요하다.
 
 - 모든 named 응답의 exact apiVersion/kind/name/namespace identity
-- Karmada ResourceBindingList/item identity, 예상 `b`/`c` placement와 cluster별 `applied: true`
+- Karmada ResourceBindingList/item identity, 예상 workload/OBC의 `b`/`c` placement와 cluster별 `applied: true`
 - 양쪽 member의 source-specific native Secret identity와 필수 credential key 존재 여부
 - 양쪽 member의 source-specific runtime ConfigMap identity, release label과 필수 data surface
 - result-web Deployment ready, seeder/analyzer Job complete
@@ -31,7 +31,8 @@ run body 전에 environment나 kubeconfig를 읽는 경로도 거부한다.
 
 관찰 namespace는 경로/이름으로 재구성하지 않고 release descriptor의 `namespace`를
 그대로 사용한다. ConfigMap 검사는 descriptor의 `renderer`와 exact source URL/path를 먼저
-확인한다. 기존 `scalex-feature-poc`에는 legacy scripts/runtime contract를 적용하고,
+확인한다. 기존 `scalex-feature-poc`에는 chart-owned scripts와 Federation binding이
+생성한 runtime ConfigMap 계약을 적용하고,
 tracked promotion 이후 `BellTigerLee/smurf-child`에는 실제 chart가 렌더링하는 단일
 `rgw-analysis-web-runtime` ConfigMap, component `runtime`, S3와 polling key contract를
 적용한다. 다른 renderer 또는 URL/path 조합은 추측하지 않고 실패한다. Fixture test는

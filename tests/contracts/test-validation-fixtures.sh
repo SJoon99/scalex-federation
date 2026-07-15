@@ -34,6 +34,7 @@ make_federation() {
   mkdir -p "$target/releases/poc"
   cp -R "$ROOT/releases/poc/rgw-analysis-web" "$target/releases/poc/"
   rm -f "$target/releases/poc/rgw-analysis-web/policy/propagation/object-bucket-claim-to-b.yaml"
+  rm -f "$target/releases/poc/rgw-analysis-web/dependencies/"*.yaml
   yq -i '
     .spec.overrideRules[0].overriders.plaintext =
       [.spec.overrideRules[0].overriders.plaintext[] | select(.path == "/spec/type")]

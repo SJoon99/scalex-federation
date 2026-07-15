@@ -20,13 +20,13 @@ contains_credential_materialization() {
     "$@" >/dev/null
 }
 
-poc_bootstrap="$ROOT/scripts/bootstrap-rgw-credentials.sh"
+poc_bootstrap="$ROOT/scripts/sync-object-storage-binding.sh"
 cuty_bootstrap="$ROOT/scripts/bootstrap-cuty-rgw-credentials.sh"
-test -x "$poc_bootstrap" || fail "approved POC credential bridge is missing"
+test -x "$poc_bootstrap" || fail "approved POC storage binding is missing"
 test -x "$cuty_bootstrap" || fail "approved Cuty credential bootstrap is missing"
-"$ROOT/tests/test-credential-bridge.sh" >/dev/null
+"$ROOT/tests/test-storage-binding.sh" >/dev/null
 if grep -nE -- '--arg (access|secret)|jsonpath=.*AWS_' "$poc_bootstrap" >/dev/null; then
-  fail "POC credential bridge exposes credential material through process arguments"
+  fail "POC storage binding exposes credential material through process arguments"
 fi
 
 mapfile -d '' -t automation_files < <(
@@ -50,8 +50,26 @@ if contains_credential_materialization "${credential_audited_files[@]}"; then
   fail "Federation automation contains credential materialization"
 fi
 
-test -z "$(find "$ROOT/releases/poc/rgw-analysis-web/dependencies" -type f \( -name '*.yaml' -o -name '*.yml' \) -print -quit)" ||
-  fail "POC dependencies must not contain deployable YAML"
+dependency_root="$ROOT/releases/poc/rgw-analysis-web/dependencies"
+mapfile -t dependency_files < <(find "$dependency_root" -type f \( -name '*.yaml' -o -name '*.yml' \) | sort)
+[ "${#dependency_files[@]}" -eq 2 ] || fail "POC dependencies must contain exactly the claim and binding manifests"
+yq e -o=json -I=0 "${dependency_files[@]}" | jq -s -e '
+  length == 2 and
+  any(.[];
+    .apiVersion == "objectbucket.io/v1alpha1" and
+    .kind == "ObjectBucketClaim" and
+    .metadata.name == "rgw-analysis-web-bucket") and
+  any(.[];
+    .apiVersion == "v1" and
+    .kind == "ConfigMap" and
+    .metadata.name == "rgw-analysis-web-storage-binding") and
+  all(.[];
+    .kind != "Secret" and
+    .kind != "PropagationPolicy" and
+    .kind != "OverridePolicy" and
+    .kind != "Deployment" and
+    .kind != "Job")
+' >/dev/null || fail "POC dependencies violate the release claim boundary"
 grep -Fq 'TARGET_NAMESPACE=scalex-cuty-rgw-analysis-web' "$cuty_bootstrap" ||
   fail "Cuty bootstrap target namespace drifted"
 grep -Fq 'TARGET_SECRET=scalex-cuty-rgw' "$cuty_bootstrap" ||
@@ -123,7 +141,7 @@ printf '%s\n' '#!/usr/bin/env bash' 'kubectl create secret generic runtime --fro
 contains_credential_materialization "$tmp/scripts" || fail "credential materialization mutation was not detected"
 mkdir -p "$tmp/scripts/nested"
 printf '%s\n' '#!/usr/bin/env bash' 'kubectl apply -f attacker.yaml' > \
-  "$tmp/scripts/nested/bootstrap-rgw-credentials.sh"
+  "$tmp/scripts/nested/sync-object-storage-binding.sh"
 contains_direct_mutation "$tmp/scripts/nested" ||
   fail "nested same-basename mutation escaped the exact bootstrap exception"
 

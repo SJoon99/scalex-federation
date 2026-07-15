@@ -7,7 +7,7 @@ renderer: helm/v1
 source:
   repoURL: https://github.com/SJoon99/scalex-feature-poc.git
   path: chart
-  revision: f6fbe48edfda972c01bdfa58068e37e00d67a9e1
+  revision: 4e26773509ef2d38409d320f55956d24f0fa3377
 values:
   path: releases/poc/rgw-analysis-web/values.yaml
 dependencies:

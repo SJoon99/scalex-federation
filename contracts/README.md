@@ -1,87 +1,67 @@
 # contracts
 
-Infra Layer, feature repository, Federation 사이에서 공통으로 지켜야 하는 계약을 문서화한다.
+Infra Layer, feature repository, Federation과 Karmada 사이의 소유권 계약이다.
 
-주요 계약 대상:
+## 책임 표
 
-- Namespace naming과 ownership
-- Workload/component label
-- Karmada resource selector
-- Cluster capability label
-- Cluster-scoped resource 제한
-- Secret reference와 credential 처리
-- Artifact revision과 promotion 규칙
+| 계층 | 소유하는 것 | 금지되는 것 |
+|---|---|---|
+| `eecs-k8s` + `*-k8s` | CNI/CSI, Rook/Ceph, ObjectStore, StorageClass, RGW endpoint | 기능별 OBC·workload |
+| feature repository | source, image build, cluster-neutral Helm workload, binding reference | cluster 이름, policy, OBC, Secret 값 |
+| Federation dependency | release-scoped OBC/PVC, non-secret binding 명세 | platform Infra, workload, credential |
+| Federation policy | placement와 Karmada-owned replica override | Argo direct Infra patch |
+| binding script | Rook 출력 → Karmada runtime Secret/ConfigMap 정규화 | Git secret 저장, workload 배포 |
+| Karmada | B/C workload 복제본과 dependency propagation | Infra Layer 공동 소유 |
 
-실제 workload manifest보다 경계와 규칙을 우선 기록한다.
+## 핵심 불변식
 
-## Release contract
+1. 동일한 `cluster + namespace + apiVersion/kind + name`을 Argo direct와 Karmada가
+   동시에 소유하지 않는다.
+2. cluster-scoped resource는 Infra Layer가 소유한다.
+3. User/Dev resource는 release 전용 `scalex-*` namespace를 사용한다.
+4. Feature chart는 member 이름과 Karmada policy를 모른다.
+5. Secret 값은 Git·Helm values·프로세스 인자·로그에 넣지 않는다.
+6. chart commit은 full SHA, image는 tag+digest로 고정한다.
 
-| 항목 | 규칙 |
-|---|---|
-| Namespace | descriptor에 `scalex-` prefix namespace를 명시하고 모든 active release에서 유일하게 사용 |
-| Release label | `scalex.io/release=<release>` |
-| Component label | `scalex.io/component=<component>` |
-| Infra ownership | Ceph/ObjectStore/bucket StorageClass/RGW endpoint/LB pool은 `b-k8s`와 `eecs-k8s`가 소유 |
-| Bucket claim ownership | 기능별 OBC는 feature Helm이 선언하고 Federation/Karmada가 기능 namespace에 배치 |
-| Workload ownership | Job/Deployment/Service는 Federation/Karmada가 소유 |
-| Secret | Feature는 Secret 이름만 참조하고 값은 Git에 저장하지 않음. 승인된 bootstrap bridge 또는 Secret Store가 Rook 생성 credential을 Karmada native `Secret`으로 전달 |
-| Placement | `PropagationPolicy`에서만 member cluster 선택 |
-| Override | Federation workload만 대상, Infra resource 수정 금지 |
-| Chart pin | `release.yaml.source.revision`은 full Git commit SHA |
-| Image pin | `values.yaml.images.*.digest`는 immutable `sha256` digest |
-| Promotion | chart revision과 해당 build에서 변경된 모든 image를 하나의 PR에서 함께 갱신 |
-| Feature source | `children.yaml`에 URL과 chart path가 정확히 등록된 repository만 허용 |
-
-Argo direct 경로와 Karmada 경로가 동일한 `cluster + namespace + kind + name`
-을 동시에 소유하면 안 된다.
-
-Object-storage lifecycle은 다음 네 단계로 분리한다.
+## Object-storage dependency 계약
 
 ```text
-*-k8s Infra capability
-  → feature Helm ObjectBucketClaim
-  → Federation placement
-  → member Rook bucket/credential provisioning
+Infra ObjectStore + StorageClass
+            ↓ consumes
+Federation ObjectBucketClaim --policy--> source member Rook
+            ↓ produces
+        Secret + ConfigMap
+            ↓ management-plane sync script
+Karmada normalized Secret + ConfigMap
+            ↓ workload propagateDeps
+          target members
+            ↓ consumes
+       feature Helm workload
 ```
 
-Karmada는 OBC를 member에 전달하지만 Rook이 member에서 생성한 Secret을 다른
-클러스터로 역수집하지 않는다. Cross-cluster 소비자는 Tower credential bridge
-또는 중앙 Secret Store를 사용한다.
+OBC는 namespace-scoped Kubernetes claim이지만 실제 bucket 이름은 Object Store의 전역
+영역일 수 있다. release별 고유 이름 또는 provider-generated 이름을 사용한다. 현재
+`rgw-analysis-web-poc` 고정 이름은 기존 데이터 보존을 위한 명시적 예외다.
 
-## Artifact promotion contract
+`dependencies/object-storage-binding.yaml`에는 이름과 endpoint 같은 non-secret 계약만
+둔다. script는 source OBC의 ConfigMap에서 실제 `BUCKET_NAME`을 읽으므로 새 release가
+생성형 bucket 이름을 사용해도 feature values를 다시 렌더링할 필요가 없다.
 
-Feature CI가 image를 몇 개 생성하는지는 Federation의 고정 스키마가 결정하지
-않는다. 각 chart의 component 이름을 `images` map의 key로 사용한다.
+## Script와 controller 선택 기준
 
-```yaml
-images:
-  api:
-    repository: ghcr.io/example/feature-api
-    tag: "1.2.3"
-    digest: sha256:<64-hex>
-    pullPolicy: IfNotPresent
-  worker:
-    repository: ghcr.io/example/feature-worker
-    tag: "1.2.3"
-    digest: sha256:<64-hex>
-    pullPolicy: IfNotPresent
-```
+현재는 release 하나, credential 변경 빈도가 낮고 운영자가 명시적으로 실행할 수 있어
+idempotent script가 최소 복잡도다. 다음 중 하나가 필요해질 때만 controller/External
+Secrets 도입을 검토한다.
 
-CI promotion의 입력은 검증된 chart commit과 component별 image digest 집합이다.
-출력은 해당 release의 `release.yaml`과 `values.yaml`만 바꾸는 Pull Request다.
-부분 승격을 피하기 위해 한 build에서 함께 동작하는 image는 한 commit에서 모두
-갱신한다. 배포와 rollback의 원자 단위도 이 Federation commit이다.
+- 다수 release의 지속 reconciliation
+- 자동 credential rotation
+- 장애 후 무인 self-healing SLA
+- source member가 여러 개라 event-driven 동기화가 필요한 경우
 
-새 feature repository는 `contracts/children.yaml`의 exact URL/path allowlist와
-`bootstrap/appproject.yaml`에 함께 등록한다. Wildcard repository 권한은 사용하지
-않는다. `FederationRelease`의 유일한 현재 renderer는 `helm/v1`이며, 새 renderer는
-별도 API/version 계약으로 추가한다. Private repository credential 등록은 Tower
-Argo 운영 경계이며 이 repository에 credential을 저장하지 않는다.
+## Placement와 override
 
-## RGW runtime credential reference
-
-`rgw-analysis-web`의 dependency directory에는 배포 YAML을 두지 않는다.
-승인된 bootstrap script가 B의 기능 소유 OBC Secret을 읽고 release values가 참조하는 이름과 key로
-Karmada API에 native `Secret`을 생성한다. workload `PropagationPolicy`의
-`propagateDeps: true`가 Pod dependency를 member로 전달한다. 어느 경로도 credential 값이나
-kubeconfig를 Git에 저장하지 않는다.
+- member 선택은 `PropagationPolicy`에서만 한다.
+- `OverridePolicy`는 Karmada가 소유하는 release 복제본만 수정한다.
+- OBC는 source member에만 배치한다.
+- runtime Secret/ConfigMap은 workload가 참조하며 `propagateDeps: true`로 전달한다.
+- B/C Infra 리소스는 Federation override 대상으로 삼지 않는다.

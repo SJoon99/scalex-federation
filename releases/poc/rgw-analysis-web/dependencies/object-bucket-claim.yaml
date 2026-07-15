@@ -1,0 +1,14 @@
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: rgw-analysis-web-bucket
+  namespace: scalex-rgw-analysis-web
+  labels:
+    app.kubernetes.io/part-of: scalex-federation-poc
+    scalex.io/release: rgw-analysis-web
+    scalex.io/component: object-storage-claim
+  annotations:
+    scalex.io/bucket-naming-mode: compatibility-fixed
+spec:
+  bucketName: rgw-analysis-web-poc
+  storageClassName: ceph-bucket

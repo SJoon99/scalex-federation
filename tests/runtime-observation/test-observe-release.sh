@@ -64,11 +64,13 @@ if [ "$flow_key" = flow ]; then
   sed "s|run-20260714-001|$run_id|g" \
     "$fixture_root/result-smurf-success.html" > "$tmp/fixtures/result.html"
 else
+  binding_manifest="$ROOT/releases/poc/rgw-analysis-web/dependencies/object-storage-binding.yaml"
+  claim_manifest="$ROOT/releases/poc/rgw-analysis-web/dependencies/object-bucket-claim.yaml"
   runtime_secret="$(yq e -r '.s3.secretName' "$ROOT/releases/poc/rgw-analysis-web/values.yaml")"
   jq \
-    --arg endpoint "$(yq e -r '.s3.endpointUrl' "$ROOT/releases/poc/rgw-analysis-web/values.yaml")" \
-    --arg bucket "$(yq e -r '.s3.bucket' "$ROOT/releases/poc/rgw-analysis-web/values.yaml")" \
-    --arg region "$(yq e -r '.s3.region' "$ROOT/releases/poc/rgw-analysis-web/values.yaml")" '
+    --arg endpoint "$(yq e -r '.data.endpointUrl' "$binding_manifest")" \
+    --arg bucket "$(yq e -r '.spec.bucketName' "$claim_manifest")" \
+    --arg region "$(yq e -r '.data.region' "$binding_manifest")" '
       .data.S3_ENDPOINT_URL = $endpoint |
       .data.S3_BUCKET = $bucket |
       .data.AWS_DEFAULT_REGION = $region
@@ -213,6 +215,9 @@ run_smurf_contract() {
       "$fixture_root/$fixture" |
       sed "s/scalex-rgw-analysis-web/$namespace/g" > "$fixtures/$fixture"
   done
+  jq 'del(.items[] | select(.spec.resource.kind == "ObjectBucketClaim"))' \
+    "$fixtures/bindings.json" > "$fixtures/bindings.filtered.json"
+  mv "$fixtures/bindings.filtered.json" "$fixtures/bindings.json"
   jq \
     --arg namespace "$namespace" \
     --arg secret "$expected_secret" '

@@ -117,7 +117,7 @@ yq e -e '
   .spec.namespaceResourceWhitelist[] |
   select(.group == "objectbucket.io" and .kind == "ObjectBucketClaim")
 ' "$ROOT/bootstrap/appproject.yaml" >/dev/null ||
-  fail "AppProject must allow feature-owned ObjectBucketClaims"
+  fail "AppProject must allow release-scoped ObjectBucketClaims"
 
 children="$ROOT/contracts/children.yaml"
 yq e '.' "$children" >/dev/null
@@ -303,8 +303,41 @@ for descriptor in "${descriptors[@]}"; do
   )
   case "$source_contract" in
     legacy-poc)
-      [ "${#dependency_kinds[@]}" -eq 0 ] ||
-        fail "legacy POC dependency path must contain no YAML resources"
+      yq e -o=json -I=0 "$dependency_render" | jq -s -e --arg namespace "$namespace" '
+        length == 2 and
+        any(.[];
+          .apiVersion == "objectbucket.io/v1alpha1" and
+          .kind == "ObjectBucketClaim" and
+          .metadata.name == "rgw-analysis-web-bucket" and
+          .metadata.namespace == $namespace and
+          .metadata.labels["scalex.io/release"] == "rgw-analysis-web" and
+          .metadata.labels["scalex.io/component"] == "object-storage-claim" and
+          .metadata.annotations["scalex.io/bucket-naming-mode"] == "compatibility-fixed" and
+          .spec == {"bucketName":"rgw-analysis-web-poc","storageClassName":"ceph-bucket"}) and
+        any(.[];
+          .apiVersion == "v1" and
+          .kind == "ConfigMap" and
+          .metadata.name == "rgw-analysis-web-storage-binding" and
+          .metadata.namespace == $namespace and
+          .metadata.labels["scalex.io/release"] == "rgw-analysis-web" and
+          .metadata.labels["scalex.io/component"] == "object-storage-binding" and
+          .data == {
+            "sourceCluster":"b",
+            "sourceNamespace":"scalex-rgw-analysis-web",
+            "sourceClaimName":"rgw-analysis-web-bucket",
+            "sourceSecretName":"rgw-analysis-web-bucket",
+            "sourceConfigMapName":"rgw-analysis-web-bucket",
+            "targetNamespace":"scalex-rgw-analysis-web",
+            "targetSecretName":"rgw-analysis-web-s3",
+            "targetConfigMapName":"rgw-analysis-web-runtime",
+            "endpointUrl":"http://10.33.142.10",
+            "region":"scalex-poc"
+          })
+      ' >/dev/null || fail "legacy POC dependencies must contain exactly the storage claim and binding contract"
+      [ "$(yq e -r '.s3.configMapName' "$values_file")" = rgw-analysis-web-runtime ] ||
+        fail "legacy POC runtime ConfigMap reference drifted"
+      [ "$(yq e -r '.s3.secretName' "$values_file")" = rgw-analysis-web-s3 ] ||
+        fail "legacy POC runtime Secret reference drifted"
       ;;
     smurf-child)
       [ "${#dependency_kinds[@]}" -eq 0 ] ||
@@ -458,20 +491,25 @@ for descriptor in "${descriptors[@]}"; do
   helm lint "$chart_dir" -f "$values_file"
   chart_render="$tmp/$environment-$name-chart.yaml"
   helm template "$name" "$chart_dir" --namespace "$namespace" -f "$values_file" > "$chart_render"
-  yq e -e 'select(.kind == "Secret" or .kind == "ExternalSecret" or .kind == "PropagationPolicy" or .kind == "OverridePolicy" or .kind == "Namespace" or .kind == "StorageClass" or .kind == "CustomResourceDefinition" or .kind == "ClusterRole" or .kind == "ClusterRoleBinding")' "$chart_render" >/dev/null 2>&1 &&
+  yq e -e 'select(.kind == "Secret" or .kind == "ExternalSecret" or .kind == "ObjectBucketClaim" or .kind == "PropagationPolicy" or .kind == "OverridePolicy" or .kind == "Namespace" or .kind == "StorageClass" or .kind == "CustomResourceDefinition" or .kind == "ClusterRole" or .kind == "ClusterRoleBinding")' "$chart_render" >/dev/null 2>&1 &&
     fail "feature chart renders a forbidden or cluster-specific resource"
   if [ "$source_contract" = legacy-poc ]; then
-    NAMESPACE="$namespace" yq e -o=json -I=0 '
-      select(.kind == "ObjectBucketClaim")
-    ' "$chart_render" | jq -s -e --arg namespace "$namespace" '
-      length == 1 and
-      .[0].apiVersion == "objectbucket.io/v1alpha1" and
-      .[0].metadata.name == "rgw-analysis-web-bucket" and
-      .[0].metadata.namespace == $namespace and
-      .[0].metadata.labels["scalex.io/component"] == "object-storage-claim" and
-      .[0].spec.bucketName == "rgw-analysis-web-poc" and
-      .[0].spec.storageClassName == "ceph-bucket"
-    ' >/dev/null || fail "legacy POC must render exactly one feature-owned ObjectBucketClaim"
+    runtime_config_map="$(yq e -r '.s3.configMapName' "$values_file")"
+    runtime_secret="$(yq e -r '.s3.secretName' "$values_file")"
+    yq e -o=json -I=0 "$chart_render" | jq -s -e \
+      --arg config_map "$runtime_config_map" \
+      --arg secret "$runtime_secret" '
+        [.[].spec.template.spec.containers[]?.env[]?] as $env |
+        ([ $env[] | select(.name == "S3_ENDPOINT_URL" or .name == "S3_BUCKET" or .name == "AWS_DEFAULT_REGION") ] | length) > 0 and
+        all($env[];
+          if .name == "S3_ENDPOINT_URL" or .name == "S3_BUCKET" or .name == "AWS_DEFAULT_REGION" then
+            .valueFrom.configMapKeyRef.name == $config_map
+          elif .name == "AWS_ACCESS_KEY_ID" or .name == "AWS_SECRET_ACCESS_KEY" then
+            .valueFrom.secretKeyRef.name == $secret
+          else true end) and
+        any(.[]; .kind == "ConfigMap" and .metadata.name == "rgw-analysis-web-nginx") and
+        ([.[] | select(.kind == "ConfigMap" and .metadata.name == $config_map)] | length) == 0
+      ' >/dev/null || fail "legacy POC chart does not consume the external storage binding contract"
   fi
   if [ "$source_contract" = smurf-child ]; then
     endpoint="$(yq e -r '.storage.endpointUrl' "$values_file")"
@@ -526,9 +564,19 @@ for descriptor in "${descriptors[@]}"; do
   ' >/dev/null || fail "workload labels or Service selectors do not match"
 
   while IFS=$'\t' read -r api_version kind resource_name; do
-    API_VERSION="$api_version" KIND="$kind" RESOURCE_NAME="$resource_name" yq e -e '
+    if API_VERSION="$api_version" KIND="$kind" RESOURCE_NAME="$resource_name" yq e -e '
       select(.apiVersion == strenv(API_VERSION) and .kind == strenv(KIND) and .metadata.name == strenv(RESOURCE_NAME))
-    ' "$chart_render" "$dependency_render" >/dev/null || fail "policy selector has no rendered resource: $kind/$resource_name"
+    ' "$chart_render" "$dependency_render" >/dev/null 2>&1; then
+      continue
+    fi
+    if [ "$source_contract" = legacy-poc ] && [ "$api_version" = v1 ] && [ "$kind" = ConfigMap ] &&
+      [ "$resource_name" = "$(yq e -r '
+        select(.kind == "ConfigMap" and .metadata.name == "rgw-analysis-web-storage-binding") |
+        .data.targetConfigMapName
+      ' "$dependency_render")" ]; then
+      continue
+    fi
+    fail "policy selector has no rendered or binding-generated resource: $kind/$resource_name"
   done < <(yq e -r -N 'select(.kind == "PropagationPolicy" or .kind == "OverridePolicy") | .spec.resourceSelectors[] | [.apiVersion, .kind, .name] | @tsv' "$policy_render")
 
   while IFS=$'\t' read -r api_version kind resource_name; do

@@ -65,8 +65,9 @@ Tower Karmada API → member clusters
 revision, runtime values, placement와 override만 저장한다.
 
 ApplicationSet은 feature chart와 release `values.yaml`을 렌더링하고,
-`policy/` 아래의 Karmada policy YAML을 재귀적으로 함께 읽는다. 별도 Kustomize
-entrypoint나 기능별 Application 파일은 사용하지 않는다.
+`dependencies/`의 release-scoped 선행 리소스와 `policy/`의 Karmada policy YAML을
+재귀적으로 함께 읽는다. 별도 Kustomize entrypoint나 기능별 Application 파일은
+사용하지 않는다.
 
 ## CI promotion 경계
 
@@ -86,15 +87,31 @@ state만 Tower Argo와 Karmada가 배포한다.
 Nginx로 제공하는 첫 vertical slice다. B/C 이름은 Federation policy에만
 존재하며 feature chart는 cluster-neutral 상태를 유지한다.
 
-이 release의 OBC는 feature chart가 기능 namespace에 선언하고 Federation이
-B로 배치한다. B Infra는 ObjectStore, bucket StorageClass와 RGW endpoint만
-제공한다. Rook이 생성한 key 값은 Git에 넣지 않고 credential bridge를 통해
-Karmada runtime Secret으로 전달한다.
+이 release의 OBC와 non-secret binding 명세는 Federation `dependencies/`가
+소유하고, OBC만 B로 배치한다. B Infra는 ObjectStore, bucket StorageClass와
+RGW endpoint까지 제공한다. Feature Helm은 workload만 렌더링하며 기존 runtime
+Secret/ConfigMap 이름을 참조한다.
+
+```text
+Federation OBC --Karmada--> B Rook
+                              ├─ Secret credential
+                              └─ ConfigMap actual bucket name
+                                         ↓ approved idempotent script
+                            Karmada runtime Secret + ConfigMap
+                                         ↓ propagateDeps
+                                       B / C workloads
+```
+
+스크립트 방식은 현재 POC 규모에서 controller를 만들지 않는 의도적인 최소 구현이다.
+최초 provisioning 또는 OBC output 재생성 때 실행하며, 지속 reconciliation과 자동
+rotation이 필요해질 때 External Secrets/controller로 대체한다.
 
 ## 기본 원칙
 
 - Feature source와 build logic은 feature repository가 소유한다.
 - Cluster Infra는 `eecs-k8s`와 각 `*-k8s` repository가 소유한다.
+- Release-scoped claim과 non-secret dependency mapping은 Federation이 소유한다.
+- Feature Helm은 workload와 기존 runtime binding 참조만 소유한다.
 - Federation workload는 Tower Argo가 child cluster에 직접 배포하지 않는다.
 - 동일 리소스를 Argo direct 경로와 Karmada가 동시에 관리하지 않는다.
 - Revision은 tag, commit 또는 immutable image digest로 고정한다.

@@ -61,21 +61,32 @@ if [ "$source_contract" = smurf-child ]; then
 fi
 if [ "$source_contract" = smurf-child ]; then
   storage_path=storage
+  expected_configmap=rgw-analysis-web-runtime
   expected_secret="$(yq e -r '.credentials.existingSecret' "$VALUES")"
   expected_access_key="$(yq e -r '.credentials.accessKeyIdKey' "$VALUES")"
   expected_secret_key="$(yq e -r '.credentials.secretAccessKeyKey' "$VALUES")"
+  expected_endpoint="$(yq e -r '.storage.endpointUrl' "$VALUES")"
+  expected_bucket="$(yq e -r '.storage.bucket' "$VALUES")"
+  expected_region="$(yq e -r '.storage.region' "$VALUES")"
 else
   storage_path=s3
+  dependencies_path="$(yq e -r '.dependencies.path' "$DESCRIPTOR")"
+  binding_manifest="$ROOT/$dependencies_path/object-storage-binding.yaml"
+  claim_manifest="$ROOT/$dependencies_path/object-bucket-claim.yaml"
+  test -f "$binding_manifest" || fail "storage binding manifest not found"
+  test -f "$claim_manifest" || fail "object bucket claim manifest not found"
+  expected_configmap="$(yq e -r '.s3.configMapName' "$VALUES")"
   expected_secret="$(yq e -r '.s3.secretName' "$VALUES")"
   expected_access_key=AWS_ACCESS_KEY_ID
   expected_secret_key=AWS_SECRET_ACCESS_KEY
+  expected_endpoint="$(yq e -r '.data.endpointUrl' "$binding_manifest")"
+  expected_bucket="$(yq e -r '.spec.bucketName' "$claim_manifest")"
+  expected_region="$(yq e -r '.data.region' "$binding_manifest")"
 fi
+[[ "$expected_configmap" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || fail "runtime ConfigMap name is invalid"
 [[ "$expected_secret" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || fail "runtime Secret name is invalid"
 [[ "$expected_access_key" =~ ^[-._a-zA-Z0-9]+$ ]] || fail "runtime access-key field is invalid"
 [[ "$expected_secret_key" =~ ^[-._a-zA-Z0-9]+$ ]] || fail "runtime secret-key field is invalid"
-expected_endpoint="$(STORAGE_PATH="$storage_path" yq e -r '.[strenv(STORAGE_PATH)].endpointUrl' "$VALUES")"
-expected_bucket="$(STORAGE_PATH="$storage_path" yq e -r '.[strenv(STORAGE_PATH)].bucket' "$VALUES")"
-expected_region="$(STORAGE_PATH="$storage_path" yq e -r '.[strenv(STORAGE_PATH)].region' "$VALUES")"
 expected_wait_seconds="$(STORAGE_PATH="$storage_path" yq e -r '.[strenv(STORAGE_PATH)].waitSeconds' "$VALUES")"
 expected_poll_seconds="$(STORAGE_PATH="$storage_path" yq e -r '.[strenv(STORAGE_PATH)].pollIntervalSeconds' "$VALUES")"
 yq e -r '.images | to_entries[] | .value.repository + ":" + .value.tag + "@" + .value.digest' "$VALUES" |
@@ -149,10 +160,10 @@ expected_endpoint_for_context() {
   [ "${#override_files[@]}" -gt 0 ] || return 0
   # $selector/$cluster below are yq variables, not shell variables.
   # shellcheck disable=SC2016
-  if ! CLUSTER="$context" yq e -r -N '
+  if ! CLUSTER="$context" CONFIGMAP_NAME="$expected_configmap" yq e -r -N '
     select(.kind == "OverridePolicy") |
     .spec.resourceSelectors[] as $selector |
-    select($selector.apiVersion == "v1" and $selector.kind == "ConfigMap" and $selector.name == "rgw-analysis-web-runtime") |
+    select($selector.apiVersion == "v1" and $selector.kind == "ConfigMap" and $selector.name == strenv(CONFIGMAP_NAME)) |
     .spec.overrideRules[] |
     .targetCluster.clusterNames[] as $cluster |
     select($cluster == strenv(CLUSTER)) |
@@ -190,7 +201,10 @@ check_bindings() {
     placed("batch/v1"; "Job"; "rgw-analysis-web-dataset-seeder"; ["b"]) and
     placed("batch/v1"; "Job"; "rgw-analysis-web-analyzer"; ["c"]) and
     placed("apps/v1"; "Deployment"; "rgw-analysis-web-result-web"; ["b"]) and
-    placed("v1"; "Service"; "rgw-analysis-web-result-web"; ["b"])
+    placed("v1"; "Service"; "rgw-analysis-web-result-web"; ["b"]) and
+    (if $profile == "legacy-poc" then
+      placed("objectbucket.io/v1alpha1"; "ObjectBucketClaim"; "rgw-analysis-web-bucket"; ["b"])
+    else true end)
   ' "$file" >/dev/null || {
     LAST_ERROR="Karmada placement is missing, partial, or not fully applied"
     return 1
@@ -222,12 +236,11 @@ check_configmap() {
       --arg bucket "$expected_bucket" \
       --arg region "$expected_region" '
       .metadata.labels["scalex.io/release"] == $release and
-      .metadata.labels["scalex.io/component"] == "result-web" and
+      .metadata.labels["scalex.io/component"] == "runtime" and
       .data.S3_ENDPOINT_URL == $endpoint and
       .data.S3_BUCKET == $bucket and
       .data.AWS_DEFAULT_REGION == $region and
-      (.data["nginx.conf"] | type) == "string" and
-      (.data["nginx.conf"] | length) > 0
+      (.data | keys | sort | join(",")) == "AWS_DEFAULT_REGION,S3_BUCKET,S3_ENDPOINT_URL"
     ' "$file" >/dev/null || {
       LAST_ERROR="member runtime ConfigMap is stale or incomplete"
       return 1
@@ -366,7 +379,7 @@ check_once() {
         v1 ConfigMap "$tmp/scripts-$context.json" || return 1
       check_configmap "$tmp/scripts-$context.json" scripts || return 1
     fi
-    read_object "$context" "$NAMESPACE" configmaps rgw-analysis-web-runtime \
+    read_object "$context" "$NAMESPACE" configmaps "$expected_configmap" \
       v1 ConfigMap "$tmp/runtime-$context.json" || return 1
     check_configmap "$tmp/runtime-$context.json" runtime "$context" || return 1
   done

@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rgw-analysis-web-storage-binding
+  namespace: scalex-rgw-analysis-web
+  labels:
+    app.kubernetes.io/part-of: scalex-federation-poc
+    scalex.io/release: rgw-analysis-web
+    scalex.io/component: object-storage-binding
+data:
+  sourceCluster: b
+  sourceNamespace: scalex-rgw-analysis-web
+  sourceClaimName: rgw-analysis-web-bucket
+  sourceSecretName: rgw-analysis-web-bucket
+  sourceConfigMapName: rgw-analysis-web-bucket
+  targetNamespace: scalex-rgw-analysis-web
+  targetSecretName: rgw-analysis-web-s3
+  targetConfigMapName: rgw-analysis-web-runtime
+  endpointUrl: http://10.33.142.10
+  region: scalex-poc

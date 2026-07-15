@@ -1,30 +1,24 @@
 # 공통 소유권 계약
 
-ScaleX 배포 경로는 Infra, feature repository, Federation의 책임을 분리한다.
+ScaleX 배포는 **Infra capability**, **release dependency**, **feature workload**를
+분리한다.
 
-| 계층 | 소유하는 것 | 소유하지 않는 것 |
+| 계층 | 대표 리소스 | 적용 경로 |
 |---|---|---|
-| Infra Layer | Karmada 설치·member join, Argo CD, CNI/CSI, Ceph ObjectStore, bucket StorageClass와 RGW endpoint | feature source, release revision와 기능별 bucket claim |
-| Feature repository | source, 독립 image build context, cluster-neutral Helm chart, namespaced OBC, test와 package | placement, cluster 이름, credential 값 |
-| `scalex-federation` | 승인된 child URL/path, exact chart commit, image tag+digest, runtime values, Secret reference와 Karmada policy | image build, 평문 secret, member cluster 직접 배포 |
+| Infra | Cilium, Rook/Ceph, ObjectStore, StorageClass, RGW endpoint | `eecs-k8s` + `*-k8s` → Tower Argo direct |
+| Release dependency | 기능 namespace의 OBC/PVC, non-secret binding spec | Federation → Tower Argo → Karmada |
+| Workload | Job, Deployment, Service, application ConfigMap | feature Helm + Federation values → Karmada |
+| Placement | PropagationPolicy, OverridePolicy | Federation → Karmada |
+| Runtime secret binding | Rook 생성 credential과 실제 bucket 이름 | 승인된 management-plane script → Karmada |
 
-Feature chart는 기능 namespace의 OBC를 렌더링할 수 있지만 `Secret`,
-`ExternalSecret`, Karmada policy 또는 cluster-scoped resource는 렌더링하지 않는다.
-Federation은 OBC placement와 target Secret 이름만 선언한다. 승인된 bootstrap
-bridge가 member Rook이 생성한 OBC Secret을 Karmada native Secret으로 옮기며,
-값은 Git에 저장하지 않는다.
+Feature chart는 cluster-neutral workload만 렌더링하고 기존 Secret/ConfigMap 이름을
+참조한다. Federation dependency가 claim lifecycle을 소유하며, script가 dynamic
+provisioning 출력을 정규화한다. Secret 값은 Git에 저장하지 않는다.
 
-Release는 `scalex.io/v1alpha1` `FederationRelease`이며 `renderer: helm/v1`, 공개
-repository URL, 승인된 chart path, full 40-character commit을 사용한다. 각 release는
-descriptor에 독립된 `scalex-` namespace를 선언하며 Application, namespace, rendered
-resource와 명시적 LoadBalancer IP claim은 active release 전체에서
-충돌할 수 없다. 배포 image는
-명시적 tag와 `sha256` digest를 함께 기록한다. `latest` alias가 registry에 있더라도
-desired state에서는 사용할 수 없다.
+Tower Argo의 Federation destination은 `karmada` 하나다. Karmada가 Push mode로 B/C에
+복제하며 Argo가 같은 member 리소스를 직접 관리하지 않는다. 선언·render 성공은
+runtime 성공 증거가 아니므로 ResourceBinding, member workload와 HTTP 결과를 별도로
+관찰한다.
 
-Tower Argo CD의 destination은 `karmada` 하나다. Karmada가 `b`, `c` member에
-복제하며 Argo가 member에 같은 리소스를 직접 관리하지 않는다. Git manifest, CI
-render 성공, source pin은 desired state의 증거일 뿐 실제 sync·placement·workload
-health의 증거가 아니다. Runtime 성공은 보호된 관찰 workflow의 별도 결과로만
-판정한다. 현재 workflow는 `karmada`, `b`, `c`만 관찰하며 Tower control API의
-Argo Application sync/health는 별도 권한이 없으므로 NOT RUN으로 남긴다.
+Cluster-scoped resource나 공유 operator는 Infra Layer에 먼저 설치한다. Federation은
+그 capability를 소비하는 namespaced instance만 생성한다.

@@ -1,6 +1,6 @@
 {
   "apiVersion":"v1",
   "kind":"ConfigMap",
-  "metadata":{"name":"rgw-analysis-web-runtime","namespace":"scalex-rgw-analysis-web","labels":{"scalex.io/release":"rgw-analysis-web","scalex.io/component":"result-web"}},
-  "data":{"S3_ENDPOINT_URL":"http://rgw.test.invalid","S3_BUCKET":"scalex-poc","AWS_DEFAULT_REGION":"scalex-poc","nginx.conf":"events {}\nhttp {}\n"}
+  "metadata":{"name":"rgw-analysis-web-runtime","namespace":"scalex-rgw-analysis-web","labels":{"scalex.io/release":"rgw-analysis-web","scalex.io/component":"runtime"}},
+  "data":{"S3_ENDPOINT_URL":"http://rgw.test.invalid","S3_BUCKET":"rgw-analysis-web-poc","AWS_DEFAULT_REGION":"scalex-poc"}
 }

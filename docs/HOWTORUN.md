@@ -1,36 +1,44 @@
-# Child feature 연결 방법
+# Child feature 연결 및 실행
 
-새 child feature는 공개 repository에 source, image context, cluster-neutral Helm
-chart와 로컬 검증 entry point를 먼저 완성한다. Secret 값, kubeconfig, cluster 이름,
-Karmada manifest는 child에 넣지 않는다.
+## 새 feature release 등록
 
-1. `contracts/children.yaml`에 exact HTTPS GitHub URL과 허용 chart path를 추가한다.
-2. 같은 exact URL을 `bootstrap/appproject.yaml`의 `sourceRepos`에 추가한다. 두 목록은
-   wildcard 없이 일치해야 한다.
-3. `releases/<environment>/<feature>/release.yaml`에 full source commit, `helm/v1`,
-   values/dependencies/policy path와 `tracked` 또는 `pinned` mode를 선언한다.
-4. `values.yaml`에는 CI가 발행한 component별 tag, digest, source revision을 한 번에
-   기록한다. 실제 registry digest를 모르면 placeholder로 release를 만들지 않는다.
-5. 현재 RGW release의 `dependencies/`에는 배포 YAML을 두지 않는다. Runtime Secret은
-   승인된 bootstrap 경계에서 Karmada API에 준비하고 placement/override만 `policy/`에 둔다.
-6. feature repository checkout을 Federation의 sibling에 두고 검증한다.
+1. feature repository에 cluster-neutral Helm chart, image build와 테스트를 완성한다.
+2. exact repository URL/chart path를 `contracts/children.yaml`과
+   `bootstrap/appproject.yaml`에 wildcard 없이 동일하게 등록한다.
+3. `releases/<environment>/<release>/release.yaml`에 full chart SHA,
+   values/dependencies/policy path와 promotion mode를 적는다.
+4. `values.yaml`에 모든 image tag+digest와 기존 runtime binding 이름을 기록한다.
+5. release claim/non-secret mapping은 `dependencies/`, placement/override는 `policy/`에 둔다.
+6. 정적 검증 후 PR로 merge한다. CI는 cluster에 직접 apply하지 않는다.
 
 ```bash
-FEATURE_REPOS_ROOT=/path/to/public-checkouts ./scripts/validate.sh
-./tests/contracts/test-release-contract.sh
-./tests/contracts/test-validation-fixtures.sh
+FEATURE_REPOS_ROOT=/path/to/checkouts ./scripts/validate.sh
+./tests/test-storage-binding.sh
+./tests/contracts/test-script-boundaries.sh
 ```
 
-현재 POC release는 feature-owned OBC가 B에서 만든 Secret을 Argo sync 전에
-Karmada native runtime Secret으로 준비한다. Credential 값이나 kubeconfig는
-repository에 저장하지 않는다.
+## RGW POC 첫 적용 또는 credential 재생성
+
+Argo sync 후 B OBC가 `Bound`이고 Rook 생성 Secret/ConfigMap이 준비된 상태에서 실행한다.
 
 ```bash
 B_KUBECONFIG=/path/to/b-kubeconfig \
 KARMADA_KUBECONFIG=/path/to/karmada-kubeconfig \
-./scripts/bootstrap-rgw-credentials.sh
+./scripts/sync-object-storage-binding.sh
 ```
 
-CI를 도입할 때는 exact origin/SHA/tree를 새로 가져와 같은 검증을 반복하고 public
-image tag가 선언 digest를 가리키는지 확인한다. 이 단계는 cluster에 접근하거나
-배포하지 않는다.
+스크립트는 binding ConfigMap을 읽고 Karmada에 normalized Secret+ConfigMap을
+server-side apply한다. Secret 내용은 출력하지 않는다. 완료 후 release를 다시 sync하여
+one-shot Job을 재실행하고 ResourceBinding, B/C Pod, result-web HTTP를 확인한다.
+
+```text
+Argo dependencies sync
+  → B OBC Bound
+  → binding script
+  → Karmada runtime binding
+  → workload sync/retry
+  → runtime observation
+```
+
+현재 고정 bucket은 migration 호환용이므로 데이터 정리 승인 없이 OBC/ObjectBucket을
+삭제하지 않는다.

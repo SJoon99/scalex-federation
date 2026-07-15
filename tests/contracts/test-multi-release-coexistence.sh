@@ -220,6 +220,7 @@ add_second_release() {
   yq -i '
     .credentials.existingSecret = "scalex-canary-rgw"
   ' "$release_root/values.yaml"
+  rm -f "$release_root/dependencies/"*.yaml "$release_root/dependencies/"*.yml
   REVISION="$revision" yq -i '
     .images.flow.tag = "sha-" + strenv(REVISION) |
     .images.web.tag = "sha-" + strenv(REVISION) |
