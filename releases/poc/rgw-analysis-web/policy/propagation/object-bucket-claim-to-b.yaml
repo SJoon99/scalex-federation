@@ -6,6 +6,7 @@ metadata:
 spec:
   conflictResolution: Abort
   preemption: Never
+  preserveResourcesOnDeletion: true
   priority: 0
   schedulerName: default-scheduler
   resourceSelectors:

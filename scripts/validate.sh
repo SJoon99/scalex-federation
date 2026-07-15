@@ -462,11 +462,12 @@ for descriptor in "${descriptors[@]}"; do
         "name": $name,
         "namespace": $namespace
       };
-      def exact_propagation($name; $selectors; $clusters; $propagate_deps; $spread):
+      def exact_propagation($name; $selectors; $clusters; $propagate_deps; $spread; $preserve):
         .metadata.name == $name and
         (.spec | keys | sort) == (["conflictResolution", "placement", "preemption", "priority",
           "resourceSelectors", "schedulerName"] +
-          (if $propagate_deps == null then [] else ["propagateDeps"] end) | sort) and
+          (if $propagate_deps == null then [] else ["propagateDeps"] end) +
+          (if $preserve == null then [] else ["preserveResourcesOnDeletion"] end) | sort) and
         .spec.conflictResolution == "Abort" and
         .spec.preemption == "Never" and
         .spec.priority == 0 and
@@ -474,21 +475,23 @@ for descriptor in "${descriptors[@]}"; do
         .spec.resourceSelectors == $selectors and
         (if $propagate_deps == null then (.spec.propagateDeps // false) == false
          else .spec.propagateDeps == $propagate_deps end) and
+        (if $preserve == null then (.spec.preserveResourcesOnDeletion // false) == false
+         else .spec.preserveResourcesOnDeletion == $preserve end) and
         .spec.placement == ({"clusterAffinity": {"clusterNames": $clusters}} +
           (if $spread then {"spreadConstraints": [{"spreadByField":"cluster","minGroups":1,"maxGroups":1}]} else {} end));
       [.[] | select(.kind == "PropagationPolicy")] as $policies |
       ($policies | length) == (if $profile == "legacy-poc" then 4 else 3 end) and
       any($policies[]; exact_propagation("rgw-analysis-web-dataset-seeder-to-b";
-        [selector("batch/v1"; "Job"; "rgw-analysis-web-dataset-seeder")]; ["b"]; true; true)) and
+        [selector("batch/v1"; "Job"; "rgw-analysis-web-dataset-seeder")]; ["b"]; true; true; null)) and
       any($policies[]; exact_propagation("rgw-analysis-web-analyzer-to-c";
-        [selector("batch/v1"; "Job"; "rgw-analysis-web-analyzer")]; ["c"]; true; true)) and
+        [selector("batch/v1"; "Job"; "rgw-analysis-web-analyzer")]; ["c"]; true; true; null)) and
       any($policies[]; exact_propagation("rgw-analysis-web-result-web-to-b";
         [selector("apps/v1"; "Deployment"; "rgw-analysis-web-result-web"),
-         selector("v1"; "Service"; "rgw-analysis-web-result-web")]; ["b"]; true; true)) and
+         selector("v1"; "Service"; "rgw-analysis-web-result-web")]; ["b"]; true; true; null)) and
       (if $profile == "legacy-poc" then
         any($policies[]; exact_propagation("rgw-analysis-web-object-bucket-claim-to-b";
           [selector("objectbucket.io/v1alpha1"; "ObjectBucketClaim"; "rgw-analysis-web-bucket")];
-          ["b"]; null; false))
+          ["b"]; null; false; true))
        else true end)
     ' >/dev/null || fail "invalid $source_contract RGW propagation policy contract"
 
