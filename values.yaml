@@ -2,43 +2,63 @@
 # Each release is keyed by its feature repository URL.
 # The renderer derives the Application name, namespace, and Helm release name
 # from the repository basename and uses chart/ as the default source path.
+# `values` is passed unchanged to the feature chart as Argo CD helm.valuesObject.
+# Keep only release-specific overrides here; omitted keys use chart/values.yaml.
 releases:
   - repo: https://github.com/SJoon99/scalex-feature-poc.git
     revision: 4e26773509ef2d38409d320f55956d24f0fa3377
     enabled: false
+    # Example only: review these overrides before setting enabled: true.
+    values:
+      s3:
+        configMapName: rgw-analysis-web-runtime
+        secretName: rgw-analysis-web-s3
+      resultWeb:
+        replicas: 2
+        service:
+          type: LoadBalancer
 
   - repo: https://github.com/SJoon99/scalex-feature-dataset-ingest.git
     revision: REPLACE_WITH_FULL_GIT_SHA
     enabled: false
+    values: {}
 
   - repo: https://github.com/SJoon99/scalex-feature-dataset-catalog.git
     revision: REPLACE_WITH_FULL_GIT_SHA
     enabled: false
+    values: {}
 
   - repo: https://github.com/SJoon99/scalex-feature-batch-analyzer.git
     revision: REPLACE_WITH_FULL_GIT_SHA
     enabled: false
+    values: {}
 
   - repo: https://github.com/SJoon99/scalex-feature-model-training.git
     revision: REPLACE_WITH_FULL_GIT_SHA
     enabled: false
+    values: {}
 
   - repo: https://github.com/SJoon99/scalex-feature-model-serving.git
     revision: REPLACE_WITH_FULL_GIT_SHA
     enabled: false
+    values: {}
 
   - repo: https://github.com/SJoon99/scalex-feature-notebook-workspace.git
     revision: REPLACE_WITH_FULL_GIT_SHA
     enabled: false
+    values: {}
 
   - repo: https://github.com/SJoon99/scalex-feature-event-processor.git
     revision: REPLACE_WITH_FULL_GIT_SHA
     enabled: false
+    values: {}
 
   - repo: https://github.com/SJoon99/scalex-feature-report-generator.git
     revision: REPLACE_WITH_FULL_GIT_SHA
     enabled: false
+    values: {}
 
   - repo: https://github.com/SJoon99/scalex-feature-alert-dispatcher.git
     revision: REPLACE_WITH_FULL_GIT_SHA
     enabled: false
+    values: {}

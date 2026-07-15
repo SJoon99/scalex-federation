@@ -18,6 +18,26 @@ releases:
   - repo: https://github.com/SJoon99/scalex-feature-example.git
     revision: <full-git-sha>
     enabled: false
+    values:
+      s3:
+        configMapName: feature-example-runtime
+        secretName: feature-example-s3
+      resultWeb:
+        replicas: 2
+        service:
+          type: LoadBalancer
+```
+
+`values` 아래에는 feature repo의 `chart/values.yaml`에서 배포 시 선택할 값만 적는다.
+이 map은 생성되는 child Application의 `spec.source.helm.valuesObject`로 그대로 전달되며,
+명시하지 않은 값은 feature chart의 기본값을 사용한다. override가 없으면 `values: {}`로 둔다.
+
+```text
+feature repo chart/values.yaml 기본값
+                  +
+Federation release.values 최소 override
+                  ↓
+Argo CD가 feature chart를 최종 렌더링
 ```
 
 1. feature CI에서 chart lint/template와 Karmada policy selector를 검증한다.
@@ -30,8 +50,9 @@ releases:
 entry를 다시 비활성화하거나 제거하면 parent chart가 child Application을 prune하고,
 Application finalizer가 Karmada API의 해당 release 리소스도 함께 정리한다.
 
-기본 경로가 `chart`가 아니면 `path`를, 배포별 override가 꼭 필요하면 `values`를 entry에
-추가할 수 있다.
+기본 경로가 `chart`가 아니면 `path`를 추가할 수 있다. 이미지의 기본 구성, 포트, 템플릿
+동작은 feature repo가 소유하고, Federation에는 placement, Infra dependency 이름, replica,
+노출 방식처럼 release마다 달라지는 값만 둔다.
 
 ## 로컬 확인
 
