@@ -45,6 +45,11 @@ mapfile -t applicationset_identities < <(yq e -r -N 'select(. != null) | [.kind,
 yq e -e '.spec.template.spec.destination.name == "karmada"' \
   "$ROOT/bootstrap/applicationset.yaml" >/dev/null || fail "ApplicationSet must target karmada"
 yq e -e '
+  .spec.template.spec.syncPolicy.managedNamespaceMetadata.labels."namespace.karmada.io/skip-auto-propagation" == "true" and
+  (.spec.template.spec.syncPolicy.syncOptions | contains(["CreateNamespace=true"]))
+' "$ROOT/bootstrap/applicationset.yaml" >/dev/null ||
+  fail "ApplicationSet must keep release namespace lifecycle in member Infra"
+yq e -e '
   (.spec.generators | type) == "!!seq" and
   (.spec.generators | length) == 1 and
   (.spec.generators[0] | keys | sort | join(",")) == "git" and

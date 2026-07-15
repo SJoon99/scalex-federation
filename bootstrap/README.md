@@ -17,6 +17,11 @@ release를 다음 세 source로 구성한다.
 policy와 dependency source는 `directory.recurse=true`이므로 별도 Kustomize entrypoint나
 기능별 Application YAML이 필요 없다. `release.yaml` 추가가 release 등록 단위다.
 
+ApplicationSet은 Karmada source namespace에
+`namespace.karmada.io/skip-auto-propagation=true`를 붙인다. 실제 member namespace는
+해당 `*-k8s` Infra repo가 공통 `workload-namespace` app으로 선행 생성한다. 따라서
+release 삭제가 Infra dependency가 들어 있는 member namespace를 삭제하지 않는다.
+
 bootstrap은 다음을 관리하지 않는다.
 
 - Karmada 설치와 member join

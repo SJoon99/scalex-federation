@@ -5,7 +5,7 @@ ScaleX 배포는 **Infra capability**, **release dependency**, **feature workloa
 
 | 계층 | 대표 리소스 | 적용 경로 |
 |---|---|---|
-| Infra | Cilium, Rook/Ceph, ObjectStore, StorageClass, RGW endpoint, OBC/PVC dependency | `eecs-k8s` + `*-k8s` → Tower Argo direct |
+| Infra | Cilium, Rook/Ceph, workload Namespace, StorageClass, RGW endpoint, OBC/PVC dependency | `eecs-k8s` + `*-k8s` → Tower Argo direct |
 | Release dependency | Infra output을 참조하는 non-secret binding spec | Federation → Tower Argo → Karmada |
 | Workload | Job, Deployment, Service, application ConfigMap | feature Helm + Federation values → Karmada |
 | Placement | PropagationPolicy, OverridePolicy | Federation → Karmada |
@@ -24,6 +24,11 @@ Tower Argo의 Federation destination은 `karmada` 하나다. Karmada가 Push mod
 복제하며 Argo가 같은 member 리소스를 직접 관리하지 않는다. 선언·render 성공은
 runtime 성공 증거가 아니므로 ResourceBinding, member workload와 HTTP 결과를 별도로
 관찰한다.
+
+Infra dependency를 담는 member namespace는 `*-k8s`가 공통
+`workload-namespace` app으로 먼저 소유한다. Federation ApplicationSet은 Karmada
+source namespace에 `namespace.karmada.io/skip-auto-propagation=true`를 부여한다.
+따라서 Argo direct와 Karmada가 같은 member Namespace를 공동 소유하지 않는다.
 
 Cluster-scoped resource나 공유 operator는 Infra Layer에 먼저 설치한다. Federation은
 그 capability를 소비하는 namespaced instance만 생성한다.

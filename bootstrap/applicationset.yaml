@@ -49,6 +49,9 @@ spec:
         automated:
           prune: true
           selfHeal: true
+        managedNamespaceMetadata:
+          labels:
+            namespace.karmada.io/skip-auto-propagation: "true"
         syncOptions:
           - CreateNamespace=true
           - RespectIgnoreDifferences=true

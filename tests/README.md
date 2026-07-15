@@ -31,9 +31,10 @@ script가 다시 추가되지 않는지는 `contracts/test-script-boundaries.sh`
 - exact child URL/path, full chart SHA와 pinned Git tree
 - 모든 rendered image의 immutable digest
 - feature chart가 OBC/Secret/policy/cluster-scoped resource를 렌더링하지 않는지
-- POC `dependencies/`가 OBC와 non-secret RuntimeBinding ConfigMap만 포함하는지
+- POC `dependencies/`가 non-secret RuntimeBinding ConfigMap만 포함하고 OBC를 포함하지 않는지
 - policy selector가 chart/dependency 또는 binding-generated runtime ConfigMap을 가리키는지
-- OBC는 B에만, workload는 의도한 B/C에 배치되는지
+- workload와 runtime binding이 의도한 B/C에 배치되고 OBC는 B Infra에만 존재하는지
+- Karmada source namespace가 auto propagation을 건너뛰는지
 - Federation Git 내부 평문 credential 부재
 - ApplicationSet의 Helm/dependency/policy source 계약
 - release 간 namespace, resource identity와 명시적 LoadBalancer IP 충돌
