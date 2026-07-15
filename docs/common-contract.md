@@ -16,7 +16,7 @@ those objects are provisioned or copied across clusters.
 
 Feature chart는 필요한 경우 release namespace 안의 `Role`/`RoleBinding`을 소유할 수 있다.
 다만 `RoleBinding`은 같은 render에 포함된 local `Role`만 참조하며, `ClusterRole` 참조나
-다른 namespace의 ServiceAccount subject는 admission에서 거부된다.
+다른 namespace의 ServiceAccount subject는 feature CI에서 거부해야 한다.
 
-An active catalog release must point at a chart revision that renders Karmada
-policies. The current pinned POC chart does not, so the entry is disabled.
+An active catalog release must point at its own chart revision that renders
+Karmada policies. All ten current comparison entries remain disabled.

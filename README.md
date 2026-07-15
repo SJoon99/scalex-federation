@@ -1,8 +1,8 @@
 # scalex-federation single-values catalog experiment
 
 This worktree is an intentionally **non-recommended comparison branch** for
-collapsing `scalex-federation` to bootstrap, docs, validation, and one central
-release catalog/values file.
+collapsing `scalex-federation` to bootstrap, docs, and one central release
+catalog/values file.
 
 The renewed ownership model is stricter than the earlier draft:
 
@@ -34,12 +34,22 @@ ApplicationSet generator selector `state=active`. Disabled releases remain in th
 catalog for compatibility rendering and review, but do not generate Argo
 Applications.
 
-## Current POC entry
+## Current POC entries
 
-`poc/rgw-analysis-web` is pinned to `scalex-feature-poc` commit
-`4e26773509ef2d38409d320f55956d24f0fa3377` and is intentionally marked
-`state: disabled` because that chart revision does not render Karmada policies.
-Its Helm values retain only workload settings and existing runtime references:
+Root `values.yaml` contains ten actual catalog entries. All are `state: disabled`,
+so this branch currently generates no Tower Application. Entries without a
+dedicated feature chart temporarily reference `scalex-feature-poc` commit
+`4e26773509ef2d38409d320f55956d24f0fa3377` only to demonstrate the shared-file
+shape.
+
+```text
+rgw-analysis-web     dataset-ingest       dataset-catalog
+batch-analyzer       model-training       model-serving
+notebook-workspace   event-processor      report-generator
+alert-dispatcher
+```
+
+Each entry keeps its own namespace and runtime references, for example:
 
 - `s3.configMapName: rgw-analysis-web-runtime`
 - `s3.secretName: rgw-analysis-web-s3`
@@ -63,15 +73,9 @@ cluster-specific overrides.
 - Platform-owned policy review is less explicit than standalone Federation YAML.
 - Argo diffs for inline Helm values are less ergonomic than separate values
   files.
-- Cutover is blocked until the pinned feature chart renders the required
+- Cutover is blocked until each feature has its own chart revision and required
   policies.
 
-기능이 10개로 증가했을 때에도 하나의 파일을 공유하는 모습은
-[`docs/ten-feature-example.md`](docs/ten-feature-example.md)에서 확인한다.
-
-## Validate locally
-
-```bash
-FEATURE_REPOS_ROOT=/home/joon/study/scalex/work ./scripts/validate.sh
-./tests/catalog/test-catalog-validation.sh
-```
+This comparison branch intentionally has no `scripts/` or `tests/` directory.
+Feature chart validation belongs to each feature repository's GitHub Actions;
+this repository only shows the resulting shared release catalog shape.
