@@ -1,12 +1,12 @@
-releaseLabel: batch-analyzer
+releaseLabel: scalex-feature-poc
 
 s3:
-  configMapName: batch-analyzer-runtime
-  secretName: batch-analyzer-s3
+  configMapName: rgw-analysis-web-runtime
+  secretName: rgw-analysis-web-s3
   inputKey: input/dataset.csv
-  resultPrefix: results/batch-analyzer
-  resultJsonKey: results/batch-analyzer/result.json
-  resultIndexKey: results/batch-analyzer/index.html
+  resultPrefix: results/rgw-analysis-web
+  resultJsonKey: results/rgw-analysis-web/result.json
+  resultIndexKey: results/rgw-analysis-web/index.html
   waitSeconds: 600
   pollIntervalSeconds: 5
   syncIntervalSeconds: 10

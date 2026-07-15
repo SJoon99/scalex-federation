@@ -6,6 +6,12 @@
 release 하나 = release.yaml + values.yaml
 ```
 
+release 디렉터리는 환경 이름이 아니라 기능 repository 이름을 그대로 사용한다.
+
+```text
+releases/scalex-feature-<name>/
+```
+
 ## 장점
 
 - feature별 PR, rollback, history가 독립적이다.

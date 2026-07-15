@@ -5,7 +5,7 @@ Federation PR에서 해당 release의 두 파일만 변경한다.
 
 ```text
 release.yaml  → source.revision, state
-values.yaml   → feature chart가 정의한 환경별 runtime override
+values.yaml   → feature chart가 정의한 최소 배포 runtime override
 ```
 
 Feature repository GitHub Actions와 Federation 승격 PR review는 다음 경계를 확인해야 한다.

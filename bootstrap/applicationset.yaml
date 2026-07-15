@@ -12,17 +12,16 @@ spec:
         repoURL: https://github.com/SJoon99/scalex-federation.git
         revision: experiment/release-per-directory
         files:
-          - path: releases/*/*/release.yaml
+          - path: releases/*/release.yaml
       selector:
         matchLabels:
           state: active
   template:
     metadata:
-      name: 'federation-{{ .environment }}-{{ .name }}'
+      name: 'federation-{{ .name }}'
       namespace: argo
       labels:
         app.kubernetes.io/part-of: scalex-federation
-        scalex.io/environment: '{{ .environment }}'
         scalex.io/release: '{{ .name }}'
     spec:
       project: scalex-federation

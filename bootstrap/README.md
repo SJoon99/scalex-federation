@@ -5,7 +5,7 @@ Tower Argo CD가 활성 release를 발견하는 고정 진입점이다.
 | 파일 | 역할 |
 |---|---|
 | `appproject.yaml` | 허용 source, `karmada` destination, namespaced kind 경계 |
-| `applicationset.yaml` | `releases/*/*/release.yaml` 중 `state=active`인 release별 Application 생성 |
+| `applicationset.yaml` | `releases/*/release.yaml` 중 `state=active`인 기능 repo별 Application 생성 |
 
 Application은 source 두 개만 사용한다.
 
