@@ -8,7 +8,7 @@ release.yaml  → source.revision, state
 values.yaml   → feature chart가 정의한 환경별 runtime override
 ```
 
-Federation CI는 기능 구현을 다시 테스트하지 않고 다음 admission 경계만 확인한다.
+Feature repository GitHub Actions와 Federation 승격 PR review는 다음 경계를 확인해야 한다.
 
 - AppProject에 허용된 source URL과 full commit SHA
 - release 디렉터리와 descriptor identity
@@ -25,5 +25,6 @@ Federation CI는 기능 구현을 다시 테스트하지 않고 다음 admission
 Federation은 특정 values key 구조를 강제하지 않고, 최종 Helm render가 immutable image를
 사용하는지를 검증한다. 따라서 배포 결과의 기준은 `source.revision + values.yaml` 조합이다.
 
-CI는 cluster에 직접 apply하거나 자동 merge하지 않는다. merge된 release commit이 승격과
-rollback의 기준이다.
+이 비교 branch에는 Federation 전용 workflow/script를 포함하지 않는다. Feature CI는
+cluster에 직접 apply하거나 자동 merge하지 않고 Federation PR만 생성한다. merge된
+release commit이 승격과 rollback의 기준이다.
