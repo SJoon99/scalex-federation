@@ -39,6 +39,12 @@ tracked promotion 이후 `BellTigerLee/smurf-child`에는 실제 chart가 렌더
 repository 내부 synthetic Smurf chart를 Helm render해 resource/image/runtime contract도
 독립적으로 계속 검증한다.
 
+RuntimeBinding 기반 release의 실제 bucket 이름은 OBC manifest의 선택적
+`spec.bucketName`을 기대값으로 사용하지 않는다. 먼저 Karmada normalized runtime
+ConfigMap의 `S3_BUCKET`을 읽고, 그 값과 B/C에 전파된 runtime ConfigMap이 일치하는지
+확인한다. 따라서 provider-generated bucket 이름도 release values 재렌더링 없이 관찰할
+수 있다.
+
 HTTP 완료 판정도 source-specific이다. Legacy POC는 heading과 함께 결과 `<dl>` 및
 Rows/sum/average field를 요구하고 waiting page를 거부한다. Smurf child는
 bootstrap/loading page에도 같은 heading이 있으므로 heading만으로 PASS하지

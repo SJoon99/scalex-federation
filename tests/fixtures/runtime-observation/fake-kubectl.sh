@@ -45,6 +45,9 @@ case "$context:$resource:$name" in
       jq '.' "$FAKE_FIXTURE_ROOT/bindings.json"
     fi
     ;;
+  karmada:configmaps:rgw-analysis-web-runtime)
+    jq '.' "$FAKE_FIXTURE_ROOT/configmap-runtime.json"
+    ;;
   b:secrets:rgw-analysis-web-s3|c:secrets:rgw-analysis-web-s3|b:secrets:scalex-poc-rgw|c:secrets:scalex-poc-rgw|b:secrets:scalex-cuty-rgw|c:secrets:scalex-cuty-rgw)
     if [ "${FAKE_SCENARIO:-healthy}" = wrong-api-version ] && [ "$context" = b ]; then
       jq '.apiVersion = "v2"' "$FAKE_FIXTURE_ROOT/secret.json"

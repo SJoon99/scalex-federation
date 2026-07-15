@@ -80,7 +80,7 @@ else
   expected_access_key=AWS_ACCESS_KEY_ID
   expected_secret_key=AWS_SECRET_ACCESS_KEY
   expected_endpoint="$(yq e -r '.data.endpointUrl' "$binding_manifest")"
-  expected_bucket="$(yq e -r '.spec.bucketName' "$claim_manifest")"
+  expected_bucket=""
   expected_region="$(yq e -r '.data.region' "$binding_manifest")"
 fi
 [[ "$expected_configmap" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || fail "runtime ConfigMap name is invalid"
@@ -368,6 +368,17 @@ check_http() {
 check_once() {
   read_bindings "$tmp/bindings.json" || return 1
   check_bindings "$tmp/bindings.json" || return 1
+
+  if [ "$source_contract" = legacy-poc ]; then
+    read_object "$KARMADA_CONTEXT" "$NAMESPACE" configmaps "$expected_configmap" \
+      v1 ConfigMap "$tmp/runtime-karmada.json" || return 1
+    expected_bucket="$(jq -r '.data.S3_BUCKET // empty' "$tmp/runtime-karmada.json")"
+    if [ -z "$expected_bucket" ]; then
+      LAST_ERROR="Karmada runtime ConfigMap has no resolved S3 bucket"
+      return 1
+    fi
+    check_configmap "$tmp/runtime-karmada.json" runtime || return 1
+  fi
 
   local context
   for context in b c; do

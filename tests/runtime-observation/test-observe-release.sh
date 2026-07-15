@@ -69,7 +69,7 @@ else
   runtime_secret="$(yq e -r '.s3.secretName' "$ROOT/releases/poc/rgw-analysis-web/values.yaml")"
   jq \
     --arg endpoint "$(yq e -r '.data.endpointUrl' "$binding_manifest")" \
-    --arg bucket "$(yq e -r '.spec.bucketName' "$claim_manifest")" \
+    --arg bucket "provider-generated-bucket" \
     --arg region "$(yq e -r '.data.region' "$binding_manifest")" '
       .data.S3_ENDPOINT_URL = $endpoint |
       .data.S3_BUCKET = $bucket |
