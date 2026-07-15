@@ -57,6 +57,8 @@ tests/test-validation.sh                    # contract 회귀 테스트
 
 단일 거대 values 파일과 달리 release 변경·rollback·CODEOWNERS 범위를 독립적으로 유지한다.
 자세한 비교는 [`docs/structure-variant.md`](docs/structure-variant.md)를 참고한다.
+기능이 10개로 증가했을 때의 전체 예시는
+[`docs/ten-feature-example.md`](docs/ten-feature-example.md)에서 확인한다.
 
 ## 현재 cutover 상태
 
