@@ -53,11 +53,11 @@ enrollment_line="$(grep -n 'contracts/children.yaml' "$validate" | head -n 1 | c
 fetch_line="$(grep -n 'git -C "$target" fetch' "$validate" | head -n 1 | cut -d: -f1)"
 [ "$enrollment_line" -lt "$fetch_line" ] || fail "untrusted source is fetched before enrollment validation"
 source_resolution_run="$(yq e -r '.jobs.validate.steps[] | select(.name == "Resolve exact enrolled source revisions") | .run' "$validate")"
-printf '%s\n' "$source_resolution_run" | grep -Fq "yq e -r -N '[.source.repoURL, .source.path, .source.revision] | @tsv'" ||
+printf '%s\n' "$source_resolution_run" | grep -Fq "yq e -r -N 'select(.state == \"active\") | [.source.repoURL, .source.path, .source.revision] | @tsv'" ||
   fail "hosted source extraction must suppress YAML document separators"
 mapfile -t source_rows < <(
-  yq e -r -N '[.source.repoURL, .source.path, .source.revision] | @tsv' \
-    "$ROOT"/releases/*/*/release.yaml
+  yq e -r -N 'select(.state == "active") | [.source.repoURL, .source.path, .source.revision] | @tsv' \
+    "$ROOT"/releases/*/release.yaml | sed '/^[[:space:]]*$/d'
 )
 [ "${#source_rows[@]}" -eq 1 ] || fail "active source extraction must match the single active release"
 if printf '%s\n' "${source_rows[@]}" | grep -Fxq -- '---'; then

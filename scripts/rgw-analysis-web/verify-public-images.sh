@@ -16,15 +16,17 @@ if [ "$#" -gt 0 ]; then
   values_files=("$@")
 else
   mapfile -t descriptors < <(
-    find "$ROOT/releases" -mindepth 3 -maxdepth 3 -name release.yaml -type f | LC_ALL=C sort
+    find "$ROOT/releases" -mindepth 2 -maxdepth 2 -name release.yaml -type f | LC_ALL=C sort
   )
   [ "${#descriptors[@]}" -gt 0 ] || fail "no active release descriptors found"
   for descriptor in "${descriptors[@]}"; do
+    [ "$(yq e -r '.state' "$descriptor")" = active ] || continue
     values_rel="$(yq e -r '.values.path' "$descriptor")"
-    [[ "$values_rel" =~ ^releases/[a-z0-9-]+/[a-z0-9-]+/values\.yaml$ ]] ||
+    [[ "$values_rel" =~ ^releases/[a-z0-9-]+/values\.yaml$ ]] ||
       fail "invalid values path in release descriptor: $descriptor"
     values_files+=("$ROOT/$values_rel")
   done
+  [ "${#values_files[@]}" -gt 0 ] || fail "no active release descriptors found"
 fi
 
 for values in "${values_files[@]}"; do

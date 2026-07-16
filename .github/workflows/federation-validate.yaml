@@ -92,7 +92,7 @@ jobs:
             git -C "$target" checkout --quiet --detach "$revision"
             test "$(git -C "$target" rev-parse HEAD)" = "$revision"
             git -C "$target" rev-parse 'HEAD^{tree}'
-          done < <(yq e -r -N '[.source.repoURL, .source.path, .source.revision] | @tsv' releases/*/*/release.yaml | sort -u)
+          done < <(yq e -r -N 'select(.state == "active") | [.source.repoURL, .source.path, .source.revision] | @tsv' releases/*/release.yaml | sed '/^[[:space:]]*$/d' | sort -u)
           printf 'root=%s\n' "$source_root" >> "$GITHUB_OUTPUT"
 
       - name: Run exact-source Federation gates

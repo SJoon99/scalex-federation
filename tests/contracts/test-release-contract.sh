@@ -27,14 +27,13 @@ trap 'rm -rf "$tmp"' EXIT
 
 cp "$ROOT/tests/fixtures/contracts/valid-release.yaml" "$tmp/release.yaml"
 "$SCHEMA_VALIDATOR" "$tmp/release.yaml"
-validate_release_descriptor "$tmp/release.yaml" "poc" "rgw-analysis-web"
+validate_release_descriptor "$tmp/release.yaml" "rgw-analysis-web"
 "$SCHEMA_VALIDATOR" "$ROOT/tests/fixtures/contracts/pinned-release.yaml"
-validate_release_descriptor "$ROOT/tests/fixtures/contracts/pinned-release.yaml" "poc" "rgw-analysis-web"
-"$SCHEMA_VALIDATOR" "$ROOT/releases/poc/rgw-analysis-web/release.yaml"
-[ "$(yq e -r '.promotion.mode' "$ROOT/releases/poc/rgw-analysis-web/release.yaml")" = pinned ] || {
-  echo "active manual release must use pinned promotion" >&2
-  exit 1
-}
+validate_release_descriptor "$ROOT/tests/fixtures/contracts/pinned-release.yaml" "rgw-analysis-web"
+for descriptor in "$ROOT"/releases/*/release.yaml; do
+  "$SCHEMA_VALIDATOR" "$descriptor"
+  validate_release_descriptor "$descriptor" "$(basename "$(dirname "$descriptor")")"
+done
 mkdir -p "$tmp/wrong-version-bin"
 printf '%s\n' '#!/usr/bin/env bash' 'echo "check-jsonschema, version 0.33.4"' > "$tmp/wrong-version-bin/check-jsonschema"
 chmod +x "$tmp/wrong-version-bin/check-jsonschema"
@@ -48,7 +47,7 @@ expect_reject() {
   shift
   cp "$ROOT/tests/fixtures/contracts/valid-release.yaml" "$tmp/$name.yaml"
   "$@" "$tmp/$name.yaml"
-  if validate_release_descriptor "$tmp/$name.yaml" "poc" "rgw-analysis-web" >/dev/null 2>&1; then
+  if validate_release_descriptor "$tmp/$name.yaml" "rgw-analysis-web" >/dev/null 2>&1; then
     echo "expected rejection: $name" >&2
     exit 1
   fi
@@ -71,7 +70,7 @@ expect_schema_accept_semantic_reject() {
   cp "$ROOT/tests/fixtures/contracts/valid-release.yaml" "$tmp/semantic-$name.yaml"
   "$@" "$tmp/semantic-$name.yaml"
   "$SCHEMA_VALIDATOR" "$tmp/semantic-$name.yaml" >/dev/null
-  if validate_release_descriptor "$tmp/semantic-$name.yaml" "poc" "rgw-analysis-web" >/dev/null 2>&1; then
+  if validate_release_descriptor "$tmp/semantic-$name.yaml" "rgw-analysis-web" >/dev/null 2>&1; then
     echo "expected cross-field semantic rejection: $name" >&2
     exit 1
   fi
@@ -110,7 +109,15 @@ set_cross_field_namespace() {
 }
 
 set_cross_field_values_path() {
-  yq -i '.values.path = "releases/poc/another-release/values.yaml"' "$1"
+  yq -i '.values.path = "releases/another-release/values.yaml"' "$1"
+}
+
+set_disabled_without_reason() {
+  yq -i '.state = "disabled"' "$1"
+}
+
+set_active_with_reason() {
+  yq -i '.disabledReason = "active releases cannot have a disabled reason"' "$1"
 }
 
 expect_schema_reject unknown-field add_unknown_field
@@ -119,13 +126,15 @@ expect_schema_reject mutable-revision set_mutable_revision
 expect_schema_reject zero-revision set_zero_revision
 expect_schema_reject traversal-path set_traversal_path
 expect_schema_reject unknown-promotion set_bad_promotion
+expect_schema_reject disabled-without-reason set_disabled_without_reason
+expect_schema_reject active-with-reason set_active_with_reason
 expect_schema_accept_semantic_reject directory-identity set_bad_identity
 expect_schema_accept_semantic_reject values-path-identity set_cross_field_values_path
 
 cp "$ROOT/tests/fixtures/contracts/valid-release.yaml" "$tmp/independent-namespace.yaml"
 set_cross_field_namespace "$tmp/independent-namespace.yaml"
 "$SCHEMA_VALIDATOR" "$tmp/independent-namespace.yaml"
-validate_release_descriptor "$tmp/independent-namespace.yaml" "poc" "rgw-analysis-web"
+validate_release_descriptor "$tmp/independent-namespace.yaml" "rgw-analysis-web"
 
 expect_reject unknown-field add_unknown_field
 expect_reject unknown-renderer set_unknown_renderer

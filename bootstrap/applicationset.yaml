@@ -12,14 +12,16 @@ spec:
         repoURL: https://github.com/SJoon99/scalex-federation.git
         revision: main
         files:
-          - path: releases/*/*/release.yaml
+          - path: releases/*/release.yaml
+      selector:
+        matchLabels:
+          state: active
   template:
     metadata:
-      name: 'federation-{{ .environment }}-{{ .name }}'
+      name: 'federation-{{ .name }}'
       namespace: argo
       labels:
         app.kubernetes.io/part-of: scalex-federation
-        scalex.io/environment: '{{ .environment }}'
         scalex.io/release: '{{ .name }}'
     spec:
       project: scalex-federation
@@ -34,14 +36,6 @@ spec:
         - repoURL: https://github.com/SJoon99/scalex-federation.git
           targetRevision: main
           ref: federation
-          path: '{{ .policy.path }}'
-          directory:
-            recurse: true
-        - repoURL: https://github.com/SJoon99/scalex-federation.git
-          targetRevision: main
-          path: '{{ .dependencies.path }}'
-          directory:
-            recurse: true
       destination:
         name: karmada
         namespace: '{{ .namespace }}'

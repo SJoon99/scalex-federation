@@ -31,3 +31,24 @@ resultWeb:
       scalex.io/exposure: internal
     port: 80
     targetPort: 8080
+
+runtimeBinding:
+  contractVersion: v1alpha1
+  bindingType: rook-obc-s3
+  sourceCluster: b
+  sourceNamespace: scalex-rgw-analysis-web
+  sourceClaimName: rgw-analysis-web-bucket
+  sourceSecretName: rgw-analysis-web-bucket
+  sourceConfigMapName: rgw-analysis-web-bucket
+  targetNamespace: scalex-rgw-analysis-web
+  targetSecretName: rgw-analysis-web-s3
+  targetConfigMapName: rgw-analysis-web-runtime
+  endpointUrl: http://10.33.142.10
+  region: scalex-poc
+
+placements:
+  datasetSeeder: b
+  analyzer: c
+  resultWeb: b
+  resultWebLoadBalancerIP: 10.33.142.20
+  runtimeEndpointOnB: http://scalex-poc-rgw.csi-rook-ceph

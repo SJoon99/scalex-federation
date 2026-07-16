@@ -2,15 +2,22 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-ENVIRONMENT="${1:-poc}"
-RELEASE="${2:-rgw-analysis-web}"
+if [ "$#" -ge 2 ]; then
+  [ "$1" = poc ] && [ "$2" = rgw-analysis-web ] || {
+    echo "legacy observer arguments must be: poc rgw-analysis-web" >&2
+    exit 1
+  }
+  CATALOG_RELEASE=scalex-feature-poc
+else
+  CATALOG_RELEASE="${1:-scalex-feature-poc}"
+fi
 KARMADA_CONTEXT="${KARMADA_CONTEXT:-karmada}"
 MEMBER_CONTEXTS="${MEMBER_CONTEXTS:-b,c}"
 OBSERVE_ATTEMPTS="${OBSERVE_ATTEMPTS:-30}"
 OBSERVE_INTERVAL_SECONDS="${OBSERVE_INTERVAL_SECONDS:-10}"
 KUBECTL="${KUBECTL:-kubectl}"
 CURL_BIN="${CURL_BIN:-curl}"
-RELEASE_DIR="$ROOT/releases/$ENVIRONMENT/$RELEASE"
+RELEASE_DIR="$ROOT/releases/$CATALOG_RELEASE"
 DESCRIPTOR="$RELEASE_DIR/release.yaml"
 VALUES="$RELEASE_DIR/values.yaml"
 LAST_ERROR="observation did not run"
@@ -26,8 +33,7 @@ for tool in "$KUBECTL" "$CURL_BIN" jq yq; do
   command -v "$tool" >/dev/null 2>&1 || fail "required observation tool is unavailable: $tool"
 done
 
-[[ "$ENVIRONMENT" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || fail "invalid environment"
-[[ "$RELEASE" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || fail "invalid release"
+[[ "$CATALOG_RELEASE" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || fail "invalid release"
 [ "$KARMADA_CONTEXT" = karmada ] || fail "KARMADA_CONTEXT must be karmada"
 [ "$MEMBER_CONTEXTS" = b,c ] || fail "MEMBER_CONTEXTS must be b,c"
 [[ "$OBSERVE_ATTEMPTS" =~ ^[1-9][0-9]*$ ]] || fail "OBSERVE_ATTEMPTS must be positive"
@@ -35,10 +41,9 @@ done
 test -f "$DESCRIPTOR" || fail "release descriptor not found"
 test -f "$VALUES" || fail "release values not found"
 
-descriptor_environment="$(yq e -r '.environment' "$DESCRIPTOR")"
 descriptor_name="$(yq e -r '.name' "$DESCRIPTOR")"
-[ "$descriptor_environment" = "$ENVIRONMENT" ] || fail "release descriptor environment does not match its directory"
-[ "$descriptor_name" = "$RELEASE" ] || fail "release descriptor name does not match its directory"
+[ "$descriptor_name" = "$CATALOG_RELEASE" ] || fail "release descriptor name does not match its directory"
+WORKLOAD_RELEASE="$(yq e -r '.releaseLabel // .name' "$VALUES")"
 NAMESPACE="$(yq e -r '.namespace' "$DESCRIPTOR")"
 [[ "$NAMESPACE" =~ ^scalex-[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || fail "release namespace is invalid"
 
@@ -70,16 +75,13 @@ if [ "$source_contract" = smurf-child ]; then
   expected_region="$(yq e -r '.storage.region' "$VALUES")"
 else
   storage_path=s3
-  dependencies_path="$(yq e -r '.dependencies.path' "$DESCRIPTOR")"
-  binding_manifest="$ROOT/$dependencies_path/runtime-binding.yaml"
-  test -f "$binding_manifest" || fail "storage binding manifest not found"
   expected_configmap="$(yq e -r '.s3.configMapName' "$VALUES")"
   expected_secret="$(yq e -r '.s3.secretName' "$VALUES")"
   expected_access_key=AWS_ACCESS_KEY_ID
   expected_secret_key=AWS_SECRET_ACCESS_KEY
-  expected_endpoint="$(yq e -r '.data.endpointUrl' "$binding_manifest")"
+  expected_endpoint="$(yq e -r '.runtimeBinding.endpointUrl' "$VALUES")"
   expected_bucket=""
-  expected_region="$(yq e -r '.data.region' "$binding_manifest")"
+  expected_region="$(yq e -r '.runtimeBinding.region' "$VALUES")"
 fi
 [[ "$expected_configmap" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || fail "runtime ConfigMap name is invalid"
 [[ "$expected_secret" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || fail "runtime Secret name is invalid"
@@ -153,6 +155,10 @@ expected_endpoint_for_context() {
   local -a override_files=()
   local -a candidates=()
   CONTEXT_ENDPOINT="$expected_endpoint"
+  if [ "$source_contract" = legacy-poc ] && [ "$context" = b ]; then
+    CONTEXT_ENDPOINT="$(yq e -r '.placements.runtimeEndpointOnB' "$VALUES")"
+    return 0
+  fi
   [ -d "$override_root" ] || return 0
   mapfile -t override_files < <(find "$override_root" -type f \( -name '*.yaml' -o -name '*.yml' \) | sort)
   [ "${#override_files[@]}" -gt 0 ] || return 0
@@ -211,7 +217,7 @@ check_configmap() {
   local config="$2"
   local context="${3:-}"
   if [ "$config" = scripts ]; then
-    jq -e --arg release "$RELEASE" '
+    jq -e --arg release "$WORKLOAD_RELEASE" '
       .metadata.labels["scalex.io/release"] == $release and
       (.data["dataset-seeder.sh"] | type) == "string" and
       (.data["dataset-seeder.sh"] | length) > 0 and
@@ -226,7 +232,7 @@ check_configmap() {
   elif [ "$source_contract" = legacy-poc ]; then
     expected_endpoint_for_context "$context" || return 1
     jq -e \
-      --arg release "$RELEASE" \
+      --arg release "$WORKLOAD_RELEASE" \
       --arg endpoint "$CONTEXT_ENDPOINT" \
       --arg bucket "$expected_bucket" \
       --arg region "$expected_region" '
@@ -243,7 +249,7 @@ check_configmap() {
   else
     expected_endpoint_for_context "$context" || return 1
     jq -e \
-      --arg release "$RELEASE" \
+      --arg release "$WORKLOAD_RELEASE" \
       --arg endpoint "$CONTEXT_ENDPOINT" \
       --arg bucket "$expected_bucket" \
       --arg region "$expected_region" \
@@ -407,7 +413,7 @@ check_once() {
 
 for ((attempt = 1; attempt <= OBSERVE_ATTEMPTS; attempt++)); do
   if check_once; then
-    echo "runtime observation passed for Karmada/member evidence: $ENVIRONMENT/$RELEASE $source_contract desired revision $expected_revision; Tower Argo sync/health NOT RUN"
+    echo "runtime observation passed for Karmada/member evidence: $CATALOG_RELEASE $source_contract desired revision $expected_revision; Tower Argo sync/health NOT RUN"
     exit 0
   fi
   if [ "$attempt" -lt "$OBSERVE_ATTEMPTS" ]; then

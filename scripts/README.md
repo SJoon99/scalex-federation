@@ -7,7 +7,7 @@ runtime mutation script의 경계를 명확히 유지한다.
 
 | 파일 | 역할 | cluster write |
 |---|---|---|
-| `validate.sh` | descriptor/source/chart/dependency/policy/image 계약 검증 | 없음 |
+| `validate.sh` | flat descriptor/source/chart/Karmada policy/image 계약 검증 | 없음 |
 | `rgw-analysis-web/verify-public-images.sh` | image tag가 선언 digest를 가리키는지 검증 | 없음 |
 | `rgw-analysis-web/observe-release.sh` | Karmada placement, B/C workload, HTTP read-only 관찰 | 없음 |
 | `sync-runtime-bindings.sh` | 모든 선언형 RuntimeBinding의 source output → Karmada runtime 객체 동기화 | Karmada binding만 |
@@ -65,6 +65,6 @@ script를 복원하지 않는다.
 담당한다.
 
 `validate.sh`는 source repository가 Federation과 같은 상위 디렉터리 아래 checkout되어
-있다고 가정한다. 다르면 `FEATURE_REPOS_ROOT`를 지정한다. chart는 working tree가 아니라
+있다고 가정한다. 다르면 `FEATURE_REPOS_ROOT`를 지정한다. active chart는 working tree가 아니라
 `release.yaml`의 pinned commit에서 export해 검증한다. `check-jsonschema`는 0.33.3을
 사용한다.

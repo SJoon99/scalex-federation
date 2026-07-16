@@ -63,20 +63,22 @@ if contains_credential_materialization "${credential_audited_files[@]}"; then
   fail "Federation automation contains credential materialization outside the generic runner"
 fi
 
-dependency_root="$ROOT/releases/poc/rgw-analysis-web/dependencies"
-mapfile -t dependency_files < <(find "$dependency_root" -type f \( -name '*.yaml' -o -name '*.yml' \) | sort)
-[ "${#dependency_files[@]}" -eq 1 ] || fail "POC dependencies must contain only the runtime binding manifest"
-yq e -o=json -I=0 "${dependency_files[@]}" | jq -s -e '
-  length == 1 and
-  (.[0] |
-    .apiVersion == "v1" and
-    .kind == "ConfigMap" and
-    .metadata.name == "rgw-analysis-web-storage-binding" and
-    .metadata.labels["scalex.io/runtime-binding"] == "true" and
-    .metadata.labels["scalex.io/binding-type"] == "rook-obc-s3" and
-    .data.contractVersion == "v1alpha1" and
-    .data.bindingType == "rook-obc-s3")
-' >/dev/null || fail "POC dependencies violate the runtime binding boundary"
+if find "$ROOT/releases" -type d \( -name dependencies -o -name policy \) -print -quit | grep -q .; then
+  fail "release directories must delegate dependencies and policies to feature repositories"
+fi
+yq e -o=json -I=0 '.runtimeBinding' "$ROOT/releases/scalex-feature-poc/values.yaml" | jq -e '
+  type == "object" and
+  .contractVersion == "v1alpha1" and
+  .bindingType == "rook-obc-s3" and
+  .sourceCluster == "b" and
+  .sourceNamespace == "scalex-rgw-analysis-web" and
+  .sourceClaimName == "rgw-analysis-web-bucket" and
+  .targetNamespace == "scalex-rgw-analysis-web" and
+  .targetSecretName == "rgw-analysis-web-s3" and
+  .targetConfigMapName == "rgw-analysis-web-runtime" and
+  .endpointUrl == "http://10.33.142.10" and
+  .region == "scalex-poc"
+' >/dev/null || fail "preserved POC runtime binding values drifted"
 
 grep -Fq './scripts/rgw-analysis-web/observe-release.sh' "$ROOT/.github/workflows/runtime-observation.yaml" ||
   fail "runtime workflow must invoke the read-only observer"

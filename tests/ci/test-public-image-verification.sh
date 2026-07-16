@@ -9,9 +9,10 @@ cp "$ROOT/tests/fixtures/ci/fake-docker.sh" "$tmp/bin/docker"
 chmod +x "$tmp/bin/docker"
 
 mapfile -t values_files < <(
-  find "$ROOT/releases" -mindepth 3 -maxdepth 3 -name release.yaml -type f -print0 |
+  find "$ROOT/releases" -mindepth 2 -maxdepth 2 -name release.yaml -type f -print0 |
     sort -z |
     while IFS= read -r -d '' descriptor; do
+      [ "$(yq e -r '.state' "$descriptor")" = active ] || continue
       yq e -r '.values.path' "$descriptor"
     done |
     sed "s#^#$ROOT/#"

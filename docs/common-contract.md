@@ -1,34 +1,20 @@
 # 공통 소유권 계약
 
-ScaleX 배포는 **Infra capability**, **release dependency**, **feature workload**를
-분리한다.
-
-| 계층 | 대표 리소스 | 적용 경로 |
+| 계층 | 소유 대상 | 배포 경로 |
 |---|---|---|
-| Infra | Cilium, Rook/Ceph, workload Namespace, StorageClass, RGW endpoint, OBC/PVC dependency | `eecs-k8s` + `*-k8s` → Tower Argo direct |
-| Release dependency | Infra output을 참조하는 non-secret binding spec | Federation → Tower Argo → Karmada |
-| Workload | Job, Deployment, Service, application ConfigMap | feature Helm + Federation values → Karmada |
-| Placement | PropagationPolicy, OverridePolicy | Federation → Karmada |
-| Runtime secret binding | Rook 생성 credential과 실제 bucket 이름 | 공통 management-plane runner → Karmada |
+| `eecs-k8s` + `*-k8s` | CNI/CSI, Ceph/RGW, workload namespace, OBC/PVC와 runtime dependency | Tower Argo direct |
+| feature repository | source, image, workload Helm template, PropagationPolicy/OverridePolicy | Federation을 통해 Karmada API |
+| `scalex-federation` | 활성 release, exact revision, namespace와 최소 values | Tower Argo |
+| Tower Karmada | policy 해석, ResourceBinding/Work와 member 복제본 | Push mode |
 
-Feature chart는 cluster-neutral workload만 렌더링하고 기존 Secret/ConfigMap 이름을
-참조한다. 각 `*-k8s`가 claim lifecycle을, Federation이 versioned RuntimeBinding을
-소유하며, 공통 runner가 feature 이름과 무관하게 Infra provisioning 출력을
-정규화한다. Secret 값은 Git에 저장하지 않는다.
+Feature chart는 dependency를 생성하지 않고 Infra가 제공한 이름이나 endpoint를 values로
+소비한다. Secret 값은 Git에 저장하지 않는다. 교차 cluster credential이 필요하면
+External Secrets 또는 승인된 management-plane binding이 선행되어야 한다.
 
-새 feature는 별도 bridge script를 만들지 않는다. `runtime-binding.yaml`의
-`sourceCluster`가 secure member kubeconfig directory의 파일을 선택하며, 현재 공통
-adapter는 `rook-obc-s3/v1alpha1`만 지원한다.
+동일한 `cluster + namespace + apiVersion/kind + name`에는 writer가 하나만 있어야 한다.
+Infra dependency와 feature workload는 같은 namespace에 존재할 수 있지만 서로 다른
+resource identity와 owner를 가져야 한다.
 
-Tower Argo의 Federation destination은 `karmada` 하나다. Karmada가 Push mode로 B/C에
-복제하며 Argo가 같은 member 리소스를 직접 관리하지 않는다. 선언·render 성공은
-runtime 성공 증거가 아니므로 ResourceBinding, member workload와 HTTP 결과를 별도로
-관찰한다.
-
-Infra dependency를 담는 member namespace는 `*-k8s`가 공통
-`workload-namespace` app으로 먼저 소유한다. Federation ApplicationSet은 Karmada
-source namespace에 `namespace.karmada.io/skip-auto-propagation=true`를 부여한다.
-따라서 Argo direct와 Karmada가 같은 member Namespace를 공동 소유하지 않는다.
-
-Cluster-scoped resource나 공유 operator는 Infra Layer에 먼저 설치한다. Federation은
-그 capability를 소비하는 namespaced instance만 생성한다.
+Federation ApplicationSet은 Karmada source namespace만 만들고 member namespace를 자동
+전파하지 않는다. `ResourceBinding`과 `ClusterResourceBinding` 허용은 관찰을 위한 것이며
+Federation이 생성 리소스를 직접 선언하거나 수정한다는 의미가 아니다.

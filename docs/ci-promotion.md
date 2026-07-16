@@ -1,10 +1,9 @@
 # CI와 release promotion
 
-`.github/workflows/federation-validate.yaml`은 Pull Request와 `main` push를 검증한다.
-checksum과 version이 고정된 Helm/yq를 설치하고, release가 선언한 공개 child를 exact
-commit으로 가져온 뒤 chart export/render, enrollment, image digest, promotion
-atomicity와 Karmada selector fixture를 검사한다. 권한은 `contents: read`뿐이며
-cluster credential을 사용하지 않는다.
+`.github/workflows/federation-validate.yaml`은 현재 `workflow_dispatch`만 제공한다. 이번
+release-per-directory 전환에서는 CI trigger나 promotion automation을 추가하지 않는다.
+로컬 `scripts/validate.sh`가 exact source, chart render, enrollment, image digest와
+Karmada selector를 검증한다.
 
 Feature CI가 promotion payload를 만들 때 source commit, chart path/version, 모든
 변경 component의 `sha-<full-commit>` tag와 registry digest를 하나로 묶는다.
