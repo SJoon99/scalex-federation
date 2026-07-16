@@ -1,4 +1,3 @@
-schemaVersion: v1
 name: scalex-feature-dataset-ingest
 namespace: scalex-feature-dataset-ingest
 state: disabled

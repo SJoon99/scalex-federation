@@ -1,4 +1,3 @@
-schemaVersion: v1
 name: scalex-feature-batch-analyzer
 namespace: scalex-feature-batch-analyzer
 state: disabled

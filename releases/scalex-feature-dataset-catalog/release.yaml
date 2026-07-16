@@ -1,4 +1,3 @@
-schemaVersion: v1
 name: scalex-feature-dataset-catalog
 namespace: scalex-feature-dataset-catalog
 state: disabled

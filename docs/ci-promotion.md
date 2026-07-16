@@ -11,7 +11,6 @@ values.yaml   → feature chart가 정의한 최소 배포 runtime override
 Feature repository GitHub Actions와 Federation 승격 PR review는 다음 경계를 확인해야 한다.
 
 - AppProject에 허용된 source URL과 full commit SHA
-- 지원하는 `schemaVersion: v1` descriptor
 - release 디렉터리와 descriptor identity
 - namespace 및 Application 이름 중복
 - 활성 chart의 Helm render 성공
