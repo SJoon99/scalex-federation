@@ -1,5 +1,4 @@
-apiVersion: scalex.io/v1alpha2
-kind: FederationRelease
+schemaVersion: v1
 name: scalex-feature-report-generator
 namespace: scalex-feature-report-generator
 state: disabled

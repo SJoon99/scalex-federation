@@ -1,5 +1,4 @@
-apiVersion: scalex.io/v1alpha2
-kind: FederationRelease
+schemaVersion: v1
 name: scalex-feature-notebook-workspace
 namespace: scalex-feature-notebook-workspace
 state: disabled

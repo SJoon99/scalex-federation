@@ -1,5 +1,4 @@
-apiVersion: scalex.io/v1alpha2
-kind: FederationRelease
+schemaVersion: v1
 name: scalex-feature-model-serving
 namespace: scalex-feature-model-serving
 state: disabled

@@ -15,6 +15,7 @@ spec:
           - path: releases/*/release.yaml
       selector:
         matchLabels:
+          schemaVersion: v1
           state: active
   template:
     metadata:

@@ -1,5 +1,4 @@
-apiVersion: scalex.io/v1alpha2
-kind: FederationRelease
+schemaVersion: v1
 name: scalex-feature-alert-dispatcher
 namespace: scalex-feature-alert-dispatcher
 state: disabled

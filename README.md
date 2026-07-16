@@ -50,7 +50,7 @@ bootstrap/                                  # Tower Argo 진입점
 docs/                                       # 소유권·승격·실행 계약
 releases/                                   # 기능 repo 단위 release
 ├─ scalex-feature-poc/
-│  ├─ release.yaml                          # repo URL/SHA, namespace, state
+│  ├─ release.yaml                          # v1 Git descriptor: repo/SHA, namespace, state
 │  └─ values.yaml                           # 최소 Helm override
 └─ scalex-feature-<name>/
    ├─ release.yaml
