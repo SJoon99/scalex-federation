@@ -9,4 +9,4 @@ source:
 values:
   path: releases/temp-poc/values.yaml
 promotion:
-  mode: pinned
+  mode: tracked

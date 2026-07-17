@@ -15,6 +15,54 @@ require() {
   command -v "$1" >/dev/null 2>&1 || fail "required command not found: $1"
 }
 
+validate_atomic_promotions() {
+  local base_ref="${VALIDATE_BASE_REF:-}"
+  [ -n "$base_ref" ] || return 0
+  [[ "$base_ref" =~ ^[0-9a-f]{40}$ ]] ||
+    fail "VALIDATE_BASE_REF must be a full commit SHA"
+  git -C "$ROOT" cat-file -e "$base_ref^{commit}" 2>/dev/null ||
+    fail "VALIDATE_BASE_REF commit is unavailable: $base_ref"
+
+  local descriptor release_path values_path mode revision old_revision
+  local current_images old_images
+  for descriptor in "${descriptors[@]}"; do
+    mode="$(yq e -r '.promotion.mode' "$descriptor")"
+    [ "$mode" = tracked ] || continue
+
+    release_path="${descriptor#"$ROOT/"}"
+    values_path="$(yq e -r '.values.path' "$descriptor")"
+    revision="$(yq e -r '.source.revision' "$descriptor")"
+    current_images="$(yq e -o=json -I=0 '.images // {}' "$ROOT/$values_path" | jq -S -c .)"
+
+    if git -C "$ROOT" cat-file -e "$base_ref:$release_path" 2>/dev/null; then
+      old_revision="$(git -C "$ROOT" show "$base_ref:$release_path" | yq e -r '.source.revision' -)"
+    else
+      old_revision=""
+    fi
+    if git -C "$ROOT" cat-file -e "$base_ref:$values_path" 2>/dev/null; then
+      old_images="$(git -C "$ROOT" show "$base_ref:$values_path" |
+        yq e -o=json -I=0 '.images // {}' - | jq -S -c .)"
+    else
+      old_images='{}'
+    fi
+
+    if [ "$revision" != "$old_revision" ]; then
+      git -C "$ROOT" diff --quiet "$base_ref" -- "$values_path" &&
+        fail "tracked promotion must update release and image values together: $release_path"
+      REVISION="$revision" yq e -o=json -I=0 '.images // {}' "$ROOT/$values_path" | jq -e '
+        length > 0 and
+        all(.[];
+          .tag == ("sha-" + env.REVISION) and
+          .sourceRevision == env.REVISION and
+          (.digest | test("^sha256:[0-9a-f]{64}$"))
+        )
+      ' >/dev/null || fail "tracked promotion image metadata must match source revision: $values_path"
+    elif [ "$current_images" != "$old_images" ]; then
+      fail "tracked image metadata cannot change without the source revision: $values_path"
+    fi
+  done
+}
+
 normalize_github_url() {
   case "$1" in
     git@github.com:*) printf 'https://github.com/%s\n' "${1#git@github.com:}" ;;
@@ -145,6 +193,7 @@ jq empty "$ROOT/contracts/federation-release-v1alpha1.schema.json"
 mapfile -t descriptors < <(find "$ROOT/releases" -mindepth 2 -maxdepth 2 -name release.yaml -type f | sort)
 [ "${#descriptors[@]}" -gt 0 ] || fail "no release descriptors found"
 "$ROOT/scripts/lib/validate-release-schema.sh" "${descriptors[@]}"
+validate_atomic_promotions
 
 for manifest in "$ROOT/bootstrap/appproject.yaml" "$ROOT/bootstrap/applicationset.yaml"; do
   yq e '.' "$manifest" >/dev/null || fail "invalid bootstrap manifest: ${manifest#"$ROOT/"}"

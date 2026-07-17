@@ -8,6 +8,7 @@ GitOps desired state가 배포되기 전에 source, render, ownership과 script 
 | `test-runtime-bindings.sh` | B/C binding 발견, kubeconfig 선택, normalized 객체와 secret 비노출 |
 | `contracts/test-script-boundaries.sh` | release directory와 runtime script 권한 경계 |
 | `contracts/test-release-contract.sh` | flat descriptor schema와 path identity |
+| `contracts/test-release-promotion.sh` | tracked/pinned 승격과 SHA·tag·digest 원자성 |
 | `contracts/test-validation-fixtures.sh` | 잘못된 source, image, policy와 Infra resource 거부 |
 | `contracts/test-multi-release-coexistence.sh` | 복수 active release와 namespace/path 충돌 거부 |
 | `runtime-observation/test-observe-release.sh` | 보존된 RGW 설정의 Karmada/member read-only 관찰 |

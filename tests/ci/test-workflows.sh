@@ -35,13 +35,18 @@ for file in "$validate" "$observe"; do
   fi
 done
 
-yq e -e '.on.workflow_dispatch != null and .on.pull_request == null and .on.push == null' \
-  "$validate" >/dev/null || fail "validation must remain manual while automatic CI is disabled"
+yq e -e '
+  .on.workflow_dispatch != null and
+  .on.pull_request != null and
+  (.on.push.branches | length) == 1 and
+  .on.push.branches[0] == "main"
+' "$validate" >/dev/null || fail "validation must run for pull requests, main pushes, and manual dispatch"
 yq e -e '.permissions.contents == "read" and (.jobs | length) == 1' "$validate" >/dev/null ||
   fail "validation permissions must be read-only"
 grep -Fq 'scripts/validate.sh' "$validate" || fail "validation entry point is not executed"
 grep -Fq 'tests/contracts/test-script-boundaries.sh' "$validate" || fail "script boundary contract is not executed"
 grep -Fq 'tests/contracts/test-validation-fixtures.sh' "$validate" || fail "adversarial fixtures are not executed"
+grep -Fq 'tests/contracts/test-release-promotion.sh' "$validate" || fail "release promotion contract is not executed"
 validation_gate_run="$(yq e -r '.jobs.validate.steps[] | select(.name == "Run exact-source Federation gates") | .run' "$validate")"
 printf '%s\n' "$validation_gate_run" | grep -Fxq './tests/contracts/test-multi-release-coexistence.sh' ||
   fail "multi-release active inventory contract is not executed"
