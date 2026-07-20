@@ -1,19 +1,19 @@
 images:
   datasetIngest:
     repository: docker.io/belltigerlee/temp-poc-dataset-ingest
-    tag: sha-4cebec1c4e32df427495501476644f903ddbe4c5
-    digest: sha256:48a8fc3613710a8ee89f7f6d4a581eb57e8d43eae7f2ee0131e0cdd9637fa9f2
-    sourceRevision: 4cebec1c4e32df427495501476644f903ddbe4c5
+    tag: sha-c1c7bee9ddf38af06e11803690f5bdf52c10bfe6
+    digest: sha256:7f983e357e9c33526b677b6a7e6ada05f7ff5ea6a423778b2c996515fbcff4fb
+    sourceRevision: c1c7bee9ddf38af06e11803690f5bdf52c10bfe6
   batchAnalyzer:
     repository: docker.io/belltigerlee/temp-poc-batch-analyzer
-    tag: sha-4cebec1c4e32df427495501476644f903ddbe4c5
-    digest: sha256:ca13f73a54a5eec85a82a25d17616339cd8501864774d0414366dabe9b550633
-    sourceRevision: 4cebec1c4e32df427495501476644f903ddbe4c5
+    tag: sha-c1c7bee9ddf38af06e11803690f5bdf52c10bfe6
+    digest: sha256:3d38182379cbc19aa1f3a79873fcc675989d2e29caad7916a6766fdf118eed4a
+    sourceRevision: c1c7bee9ddf38af06e11803690f5bdf52c10bfe6
   reportGenerator:
     repository: docker.io/belltigerlee/temp-poc-report-generator
-    tag: sha-4cebec1c4e32df427495501476644f903ddbe4c5
-    digest: sha256:2d9cb4e545d2c2d643f68e067fb455741691f1733b23ea877d311d7a758f1c9e
-    sourceRevision: 4cebec1c4e32df427495501476644f903ddbe4c5
+    tag: sha-c1c7bee9ddf38af06e11803690f5bdf52c10bfe6
+    digest: sha256:08d370ef40e6c0ab9dc8b2aeaafbca9e71515776dad12cf1f04a31aaec07dd83
+    sourceRevision: c1c7bee9ddf38af06e11803690f5bdf52c10bfe6
 
 batchAnalyzer:
   datasetUrl: http://10.33.142.20/dataset.csv

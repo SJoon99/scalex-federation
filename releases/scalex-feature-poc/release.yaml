@@ -1,5 +1,5 @@
 name: scalex-feature-poc
-namespace: scalex-rgw-analysis-web
+namespace: scalex-feature-poc
 state: disabled
 disabledReason: >-
   The pinned chart does not render the required Karmada policies yet.

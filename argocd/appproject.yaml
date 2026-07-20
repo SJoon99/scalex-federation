@@ -1,0 +1,57 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: scalex-federation
+  namespace: argo
+spec:
+  description: ScaleX User/Dev workloads reconciled into the Tower Karmada API.
+  sourceRepos:
+    - https://github.com/BellTigerLee/temp-poc.git
+    - https://github.com/SJoon99/scalex-feature-poc.git
+    - https://github.com/SJoon99/scalex-feature-dataset-ingest.git
+    - https://github.com/SJoon99/scalex-feature-dataset-catalog.git
+    - https://github.com/SJoon99/scalex-feature-batch-analyzer.git
+    - https://github.com/SJoon99/scalex-feature-model-training.git
+    - https://github.com/SJoon99/scalex-feature-model-serving.git
+    - https://github.com/SJoon99/scalex-feature-notebook-workspace.git
+    - https://github.com/SJoon99/scalex-feature-event-processor.git
+    - https://github.com/SJoon99/scalex-feature-report-generator.git
+    - https://github.com/SJoon99/scalex-feature-alert-dispatcher.git
+    - https://github.com/SJoon99/scalex-federation.git
+  destinations:
+    - name: karmada
+      namespace: scalex-*
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: work.karmada.io
+      kind: ClusterResourceBinding
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: ServiceAccount
+    - group: ""
+      kind: Service
+    - group: apps
+      kind: Deployment
+    - group: apps
+      kind: StatefulSet
+    - group: apps
+      kind: DaemonSet
+    - group: batch
+      kind: Job
+    - group: batch
+      kind: CronJob
+    - group: autoscaling
+      kind: HorizontalPodAutoscaler
+    - group: rbac.authorization.k8s.io
+      kind: Role
+    - group: rbac.authorization.k8s.io
+      kind: RoleBinding
+    - group: policy.karmada.io
+      kind: PropagationPolicy
+    - group: policy.karmada.io
+      kind: OverridePolicy
+    - group: work.karmada.io
+      kind: ResourceBinding

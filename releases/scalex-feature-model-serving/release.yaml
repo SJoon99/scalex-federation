@@ -1,0 +1,14 @@
+name: scalex-feature-model-serving
+namespace: scalex-feature-model-serving
+state: disabled
+disabledReason: >-
+  The example feature repository and immutable chart revision have not been promoted yet.
+renderer: helm/v1
+source:
+  repoURL: https://github.com/SJoon99/scalex-feature-model-serving.git
+  path: chart
+  revision: REPLACE_WITH_FULL_GIT_SHA
+values:
+  path: releases/scalex-feature-model-serving/values.yaml
+promotion:
+  mode: pinned

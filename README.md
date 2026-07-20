@@ -1,55 +1,68 @@
 # scalex-federation
 
-ScaleX User/Dev Layer의 배포 승인 목록을 관리하는 GitOps repository다. Tower Argo CD가
-활성 release를 읽어 Karmada control plane에 동기화하고, Karmada가 선택된 member
-cluster에 workload를 배포한다.
+ScaleX 기능의 **배포 승인 목록**을 관리하는 GitOps repository다. 기능 구현, Karmada
+정책, Object Storage claim은 더 이상 이 repository가 소유하지 않는다.
 
-## 소유권
+배포 단위는 `release 하나 = release.yaml + values.yaml` 구조를 사용한다.
 
-- Feature repository: source, image, workload Helm template, namespaced Karmada policy
-- `scalex-federation`: 활성 release, exact chart revision, namespace, 환경별 Helm values
-- `eecs-k8s`와 `*-k8s`: CNI/CSI, Ceph/RGW, OBC/PVC, workload namespace 등 Infra dependency
-- Tower Karmada: placement 해석과 B/C member 복제본
+## 책임
 
-동일한 리소스를 Argo direct와 Karmada가 동시에 관리하지 않는다. Federation의
-ApplicationSet은 Karmada source namespace에
-`namespace.karmada.io/skip-auto-propagation=true`를 설정해 member namespace ownership을
-Infra repository에 남긴다.
+- 배포할 feature Helm chart의 exact Git revision 고정
+- 기능 repo와 동일한 release 식별자, namespace, source revision 고정
+- 기능 chart에 전달할 최소 배포 values 선택
+- release 활성화·비활성화 및 Git 기반 승격/rollback
+- Tower Argo의 AppProject/ApplicationSet 선언
+
+## 책임지지 않는 것
+
+- 기능 source, image build 또는 Helm template 구현
+- PropagationPolicy/OverridePolicy template 작성
+- OBC/PVC, bucket, credential 또는 runtime binding 생성
+- CNI, CSI, Ceph, RGW 등 Infra 구성
+- child cluster 직접 변경
 
 ## 배포 흐름
 
 ```text
 feature repository
 ├─ workload Helm templates
-└─ PropagationPolicy/OverridePolicy templates
-              │ pinned revision + release values
-              ▼
-scalex-federation releases/<repo>/
-              │
-              ▼
-Tower Argo CD → Tower Karmada API → B/C member clusters
+└─ Karmada policy Helm templates
+           │ pinned revision + release values
+           ▼
+scalex-federation release catalog
+           │
+           ▼
+Tower Argo CD ──sync──> Tower Karmada API ──Push──> member clusters
+
+eecs-k8s + *-k8s ──Argo direct──> Infra와 feature dependency
 ```
 
-## 디렉터리
+Feature chart가 workload와 policy를 함께 렌더링하므로 이름과 selector 변경은 하나의
+artifact revision에서 원자적으로 검증된다. Federation values는 기존 Infra가 제공한
+Secret/ConfigMap 이름과 배포별 runtime 값만 전달한다.
 
-| 경로 | 역할 |
-|---|---|
-| `bootstrap/` | AppProject와 flat release ApplicationSet |
-| `releases/<repo>/` | repository별 `release.yaml`과 `values.yaml` |
-| `contracts/` | source enrollment과 release descriptor 계약 |
-| `scripts/` | 로컬 검증과 기존 runtime binding/observation 도구 |
-| `tests/` | release, Karmada policy, 보안 경계 회귀 검증 |
+## 구조
 
-현재 `temp-poc`가 active다. B의 dataset service에서 C의 analyzer가 데이터를 읽고,
-분석 결과를 B의 report service로 다시 전송한다. `scalex-feature-poc`의 기존 RGW/S3,
-image, runtime binding, placement 값은 보존하지만 chart가 policy를 렌더링하지 않으므로
-disabled 상태다.
-
-```bash
-PATH=/path/to/yq:$PATH \
-FEATURE_REPOS_ROOT=/path/to/checkouts \
-./scripts/validate.sh
+```text
+argocd/                                     # Tower Argo CD 진입점
+docs/                                       # 소유권·승격·실행 계약
+releases/                                   # 기능 repo 단위 release
+├─ scalex-feature-poc/
+│  ├─ release.yaml                          # Git descriptor: repo/SHA, namespace, state
+│  └─ values.yaml                           # 최소 Helm override
+└─ scalex-feature-<name>/
+   ├─ release.yaml
+   └─ values.yaml
 ```
 
-실제 image/chart blob은 각 feature repository와 registry가 소유한다. 이 repository에는
-credential 원문을 저장하지 않고 immutable source와 image 좌표만 기록한다.
+단일 거대 values 파일과 달리 release 변경·rollback·CODEOWNERS 범위를 독립적으로 유지한다.
+자세한 비교는 [`docs/structure-variant.md`](docs/structure-variant.md)를 참고한다.
+
+## 현재 release 상태
+
+`releases/` 바로 아래에 기능 repo 이름과 동일한 release 디렉터리 11개가 존재한다.
+`poc` 같은 환경 중간 계층은 사용하지 않는다. 각 디렉터리명, `release.yaml`의 `name`,
+`namespace`, `source.repoURL`은 같은 기능 repo 식별자를 따른다.
+
+`temp-poc`은 immutable chart SHA를 고정해 `state: active`로 운영하며, 나머지 10개는
+전용 repo와 chart가 준비된 후 full SHA와 values를 채워 개별적으로 활성화한다.
