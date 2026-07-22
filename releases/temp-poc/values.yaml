@@ -1,19 +1,19 @@
 images:
   dataset-ingest:
-    repository: docker.io/belltigerlee/temp-poc-dataset-ingest
-    tag: sha-c1c7bee9ddf38af06e11803690f5bdf52c10bfe6
+    repository: 10.34.25.18/tower-ci/temp-poc/dataset-ingest
+    tag: sha-d62d00a9c07067c4c620cee42ab9e760acf606cc
     pullPolicy: IfNotPresent
-    digest: sha256:7f983e357e9c33526b677b6a7e6ada05f7ff5ea6a423778b2c996515fbcff4fb
-    sourceRevision: c1c7bee9ddf38af06e11803690f5bdf52c10bfe6
+    digest: sha256:e118b5fad1a9d2f143511bfbd4678539fd73745da4d3d27e443c22c251add337
+    sourceRevision: d62d00a9c07067c4c620cee42ab9e760acf606cc
   batch-analyzer:
-    repository: docker.io/belltigerlee/temp-poc-batch-analyzer
-    tag: sha-c1c7bee9ddf38af06e11803690f5bdf52c10bfe6
+    repository: 10.34.25.18/tower-ci/temp-poc/batch-analyzer
+    tag: sha-d62d00a9c07067c4c620cee42ab9e760acf606cc
     pullPolicy: IfNotPresent
-    digest: sha256:3d38182379cbc19aa1f3a79873fcc675989d2e29caad7916a6766fdf118eed4a
-    sourceRevision: c1c7bee9ddf38af06e11803690f5bdf52c10bfe6
+    digest: sha256:27c947631e1ee2ec62c1046d1735dffafe0e24a50f92efe3994f76eaf501cfa1
+    sourceRevision: d62d00a9c07067c4c620cee42ab9e760acf606cc
   report-generator:
-    repository: docker.io/belltigerlee/temp-poc-report-generator
-    tag: sha-c1c7bee9ddf38af06e11803690f5bdf52c10bfe6
+    repository: 10.34.25.18/tower-ci/temp-poc/report-generator
+    tag: sha-d62d00a9c07067c4c620cee42ab9e760acf606cc
     pullPolicy: IfNotPresent
-    digest: sha256:08d370ef40e6c0ab9dc8b2aeaafbca9e71515776dad12cf1f04a31aaec07dd83
-    sourceRevision: c1c7bee9ddf38af06e11803690f5bdf52c10bfe6
+    digest: sha256:a26fa00fd09e28106257a7a48eebeeddaaa25a01142aba0d4031165f8d6d35e4
+    sourceRevision: d62d00a9c07067c4c620cee42ab9e760acf606cc
