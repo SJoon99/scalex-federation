@@ -1,16 +1,19 @@
 images:
-  datasetIngest:
+  dataset-ingest:
     repository: docker.io/belltigerlee/temp-poc-dataset-ingest
     tag: sha-c1c7bee9ddf38af06e11803690f5bdf52c10bfe6
+    pullPolicy: IfNotPresent
     digest: sha256:7f983e357e9c33526b677b6a7e6ada05f7ff5ea6a423778b2c996515fbcff4fb
     sourceRevision: c1c7bee9ddf38af06e11803690f5bdf52c10bfe6
-  batchAnalyzer:
+  batch-analyzer:
     repository: docker.io/belltigerlee/temp-poc-batch-analyzer
     tag: sha-c1c7bee9ddf38af06e11803690f5bdf52c10bfe6
+    pullPolicy: IfNotPresent
     digest: sha256:3d38182379cbc19aa1f3a79873fcc675989d2e29caad7916a6766fdf118eed4a
     sourceRevision: c1c7bee9ddf38af06e11803690f5bdf52c10bfe6
-  reportGenerator:
+  report-generator:
     repository: docker.io/belltigerlee/temp-poc-report-generator
     tag: sha-c1c7bee9ddf38af06e11803690f5bdf52c10bfe6
+    pullPolicy: IfNotPresent
     digest: sha256:08d370ef40e6c0ab9dc8b2aeaafbca9e71515776dad12cf1f04a31aaec07dd83
     sourceRevision: c1c7bee9ddf38af06e11803690f5bdf52c10bfe6

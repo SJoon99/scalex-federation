@@ -7,6 +7,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 FULL_SHA = re.compile(r"^[0-9a-f]{40}$")
 DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+IMAGE_KEY = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
 def load(path: Path):
@@ -60,9 +61,11 @@ assert temp_release["promotion"]["mode"] == "tracking"
 assert FULL_SHA.fullmatch(temp_release["promotion"]["resolvedRevision"])
 assert "images" not in runtime_values
 assert set(generated_values) == {"images"}
-for image in generated_values["images"].values():
+for key, image in generated_values["images"].items():
+    assert IMAGE_KEY.fullmatch(key)
     assert FULL_SHA.fullmatch(image["sourceRevision"])
     assert DIGEST.fullmatch(image["digest"])
+    assert image["pullPolicy"] in {"Always", "IfNotPresent"}
 merged = deep_merge(runtime_values, generated_values)
 assert "images" in merged and "karmada" in merged and "batchAnalyzer" in merged
 
