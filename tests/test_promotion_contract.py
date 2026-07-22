@@ -15,15 +15,6 @@ def load(path: Path):
         return yaml.safe_load(stream)
 
 
-def deep_merge(base, override):
-    if not isinstance(base, dict) or not isinstance(override, dict):
-        return override
-    result = dict(base)
-    for key, value in override.items():
-        result[key] = deep_merge(result[key], value) if key in result else value
-    return result
-
-
 applicationset = load(ROOT / "argocd/applicationset.yaml")
 source = applicationset["spec"]["template"]["spec"]["sources"][0]
 assert 'dig "source" "revision"' in source["targetRevision"]
@@ -59,6 +50,7 @@ generated_values = load(release_dir / "values.yaml")
 assert "revision" not in temp_release["source"]
 assert temp_release["promotion"]["mode"] == "tracking"
 assert FULL_SHA.fullmatch(temp_release["promotion"]["resolvedRevision"])
+assert runtime_values == {}
 assert "images" not in runtime_values
 assert set(generated_values) == {"images"}
 for key, image in generated_values["images"].items():
@@ -66,7 +58,4 @@ for key, image in generated_values["images"].items():
     assert FULL_SHA.fullmatch(image["sourceRevision"])
     assert DIGEST.fullmatch(image["digest"])
     assert image["pullPolicy"] in {"Always", "IfNotPresent"}
-merged = deep_merge(runtime_values, generated_values)
-assert "images" in merged and "karmada" in merged and "batchAnalyzer" in merged
-
 print("ScaleX Federation promotion contract: PASS")
