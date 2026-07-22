@@ -10,4 +10,4 @@ values:
   path: releases/temp-poc/values.yaml
 promotion:
   mode: tracking
-  resolvedRevision: f5a2b0f1590c906a9202c4e15e1445c5230eccc6
+  resolvedRevision: d62d00a9c07067c4c620cee42ab9e760acf606cc
