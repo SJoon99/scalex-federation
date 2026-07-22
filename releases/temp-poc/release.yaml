@@ -5,8 +5,9 @@ renderer: helm/v1
 source:
   repoURL: https://github.com/BellTigerLee/temp-poc.git
   path: chart
-  revision: f5a2b0f1590c906a9202c4e15e1445c5230eccc6
+  branch: main
 values:
   path: releases/temp-poc/values.yaml
 promotion:
-  mode: pinned
+  mode: tracking
+  resolvedRevision: f5a2b0f1590c906a9202c4e15e1445c5230eccc6

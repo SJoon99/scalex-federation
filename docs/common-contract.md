@@ -4,7 +4,7 @@
 |---|---|---|
 | `eecs-k8s` + `*-k8s` | CNI/CSI, Ceph/RGW, bucket/OBC, runtime Secret·ConfigMap 등 Infra dependency | Tower Argo direct |
 | feature repository | source, image, workload Helm template, PropagationPolicy/OverridePolicy template | Federation release를 통해 Karmada API |
-| `scalex-federation` | 활성 release 목록, exact revision, namespace, 환경별 최소 values | Tower Argo |
+| `scalex-federation` | 활성 release 목록, explicit pin 또는 latest promoted successful revision, namespace, runtime/generated values | Tower Argo |
 | Tower Karmada | policy 해석, ResourceBinding/Work, member 복제본 | Push mode |
 
 ## Dependency 계약

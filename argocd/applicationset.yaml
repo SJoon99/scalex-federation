@@ -27,11 +27,12 @@ spec:
       project: scalex-federation
       sources:
         - repoURL: '{{ .source.repoURL }}'
-          targetRevision: '{{ .source.revision }}'
+          targetRevision: '{{ dig "source" "revision" (dig "promotion" "resolvedRevision" "" .) . }}'
           path: '{{ .source.path }}'
           helm:
             releaseName: '{{ .name }}'
             valueFiles:
+              - '$federation/releases/{{ .name }}/runtime-values.yaml'
               - '$federation/{{ .values.path }}'
         - repoURL: https://github.com/SJoon99/scalex-federation.git
           targetRevision: main

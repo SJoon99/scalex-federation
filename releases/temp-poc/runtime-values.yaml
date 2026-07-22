@@ -1,0 +1,15 @@
+batchAnalyzer:
+  datasetUrl: http://10.33.142.20/dataset.csv
+  reportUrl: http://10.33.142.21/result
+
+karmada:
+  enabled: true
+  placements:
+    datasetIngest:
+      cluster: b
+      loadBalancerIP: 10.33.142.20
+    batchAnalyzer:
+      cluster: c
+    reportGenerator:
+      cluster: b
+      loadBalancerIP: 10.33.142.21
