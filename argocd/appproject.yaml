@@ -7,6 +7,7 @@ spec:
   description: ScaleX User/Dev workloads reconciled into the Tower Karmada API.
   sourceRepos:
     - https://github.com/BellTigerLee/temp-poc.git
+    - https://github.com/BellTigerLee/sample-poc.git
     - https://github.com/SJoon99/scalex-feature-poc.git
     - https://github.com/SJoon99/scalex-feature-dataset-ingest.git
     - https://github.com/SJoon99/scalex-feature-dataset-catalog.git
