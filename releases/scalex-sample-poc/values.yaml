@@ -1,0 +1,7 @@
+images:
+  app:
+    repository: 10.34.25.18/tower-ci/scalex-sample-poc/app
+    tag: v0.1.0
+    pullPolicy: IfNotPresent
+    digest: sha256:34b2ad7a311eb37d80b7b72fd07bc266be58ed974ec952a875b1f89d14d36ac3
+    sourceRevision: 1394efcbaf5e2d43ece2bead975a7f690f22910f
