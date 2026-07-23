@@ -21,11 +21,33 @@ spec:
   destinations:
     - name: karmada
       namespace: scalex-*
+  # cluster-scoped 허용 목록.
+  # 여기의 kind는 release.yaml의 requiredKinds가 요구해서 열린 것이어야 한다.
+  # 아무 release도 요구하지 않는 항목은 tests/test_promotion_contract.py가 WARN으로 보고한다.
   clusterResourceWhitelist:
     - group: ""
       kind: Namespace
     - group: work.karmada.io
       kind: ClusterResourceBinding
+    # --- controller / custom scheduler child를 위해 개방 (T6) ---
+    # cluster-scoped 리소스를 member cluster로 전파할 유일한 수단.
+    # 이것이 없으면 CRD/ClusterRole을 렌더해도 Karmada가 member로 밀어내지 못한다.
+    - group: policy.karmada.io
+      kind: ClusterPropagationPolicy
+    - group: policy.karmada.io
+      kind: ClusterOverridePolicy
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+  # 의도적으로 열지 않은 것 (열려면 별도 결정이 필요하다):
+  #   Secret        - child가 소유하지 않는다. infra(*-k8s)가 만들고 child는 이름만 받는다
+  #   Ingress       - member cluster의 gateway 소유. Karmada 경로와 writer가 겹친다
+  #   PriorityClass - cluster 전역 스케줄링에 영향
+  #   Validating/MutatingWebhookConfiguration - 잘못 설정하면 cluster 전체가 멈춘다
+  #   APIService, StorageClass, PersistentVolume - infra 경계
   namespaceResourceWhitelist:
     - group: ""
       kind: ConfigMap
@@ -55,3 +77,10 @@ spec:
       kind: OverridePolicy
     - group: work.karmada.io
       kind: ResourceBinding
+    # --- stateful / HA workload를 위해 개방 (T6) ---
+    - group: ""
+      kind: PersistentVolumeClaim
+    - group: networking.k8s.io
+      kind: NetworkPolicy
+    - group: policy
+      kind: PodDisruptionBudget
