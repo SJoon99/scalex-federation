@@ -1,5 +1,12 @@
 # Local agent metadata
+# Directories are unanchored so nested session/state dirs are covered too.
+.claude/
+.codex/
+.omc/
+.omo/
 /AGENTS.md
-/.omo/
-/.codex/
+/CLAUDE.md
+/.claude.json
+/.codex.toml
+/.mcp.json
 /.debug-journal.md
