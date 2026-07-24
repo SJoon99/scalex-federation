@@ -1,0 +1,53 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: scalex-releases
+  namespace: argo
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - git:
+        repoURL: https://github.com/SmartX-Team/scalex-federation.git
+        revision: main
+        files:
+          - path: releases/*/release.yaml
+      selector:
+        matchLabels:
+          state: active
+  template:
+    metadata:
+      name: 'federation-{{ .name }}'
+      namespace: argo
+      labels:
+        app.kubernetes.io/part-of: scalex-federation
+        scalex.smartx.io/release: '{{ .name }}'
+    spec:
+      project: scalex-federation
+      destination:
+        name: karmada
+        namespace: '{{ .namespace }}'
+      sources:
+        - repoURL: '{{ .source.repoURL }}'
+          targetRevision: '{{ .source.revision }}'
+          path: '{{ .source.path }}'
+          helm:
+            releaseName: '{{ .name }}'
+            valueFiles:
+              - '$federation/{{ .values.path }}'
+        - repoURL: https://github.com/SmartX-Team/scalex-federation.git
+          targetRevision: main
+          ref: federation
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        managedNamespaceMetadata:
+          labels:
+            namespace.karmada.io/skip-auto-propagation: "true"
+        syncOptions:
+          - CreateNamespace=true
+          - RespectIgnoreDifferences=true
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
