@@ -11,4 +11,4 @@ values:
   path: releases/scalex-sample-poc/values.yaml
 promotion:
   mode: tracking # sha는 CI-managed됨.
-  resolvedRevision: a155e27f7e75180ba3acea5c0e12619a33005068
+  resolvedRevision: a229f34c6f1f26e0dc96eecac0ef567d7bb3a667
