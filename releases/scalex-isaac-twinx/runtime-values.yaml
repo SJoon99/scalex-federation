@@ -3,3 +3,7 @@ fullnameOverride: isaac-portal
 karmada:
   placement:
     cluster: c
+  portalService:
+    exposure: member-lb
+    loadBalancerIP: 10.33.143.11
+    annotationKey: lbipam.cilium.io/ips
