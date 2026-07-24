@@ -26,7 +26,7 @@ spec:
     spec:
       project: scalex-federation
       destination:
-        name: karmada
+        name: scalex
         namespace: '{{ .namespace }}'
       sources:
         - repoURL: '{{ .source.repoURL }}'

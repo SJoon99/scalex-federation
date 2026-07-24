@@ -9,7 +9,7 @@ spec:
     - https://github.com/SmartX-Team/scalex-federation.git
     - https://github.com/SmartX-Team/scalex-*.git
   destinations:
-    - name: karmada
+    - name: scalex
       namespace: scalex-*
   clusterResourceWhitelist:
     - group: ""
