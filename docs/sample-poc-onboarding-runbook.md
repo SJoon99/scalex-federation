@@ -613,16 +613,25 @@ main에서 찾을 수 있다. (없으면 `release not enrolled`)
 `build-targets`를 **생략**한다 → T8이 `images/app/Dockerfile`에서 파생한다.
 tower는 `promotion.enabled=true`이므로 build 성공 시 T10의 `promote`가 이어서 PR을 연다.
 
-`sample-poc-build.yaml`:
+> ⚠️ **child-name = 등록된 release 이름(`scalex-sample-poc`)이다. base 이름(`sample-poc`)이 아니다.**
+> promote가 `releases/<child-name>/release.yaml`을 찾고 `.name`이 child-name과 같은지 확인하며
+> (`task-federation-promote.tpl`), build-push는 이미지를 `<registry>/<prefix>/<child-name>/<image>`에
+> 올린다(`task-buildkit-build-push.tpl`). 그래서 child-name을 `sample-poc`로 주면
+> `release not enrolled: sample-poc`로 실패한다. AppProject가 `scalex-*`를 강제하므로 release
+> 이름에 `scalex-` 접두사가 붙고, child-name도 그 값이어야 한다. 이미지는 자동으로
+> `tower-ci/scalex-sample-poc/<image>`로 간다(child의 `chart/values.yaml` repository 기본값은
+> promote가 덮어쓰므로 무관).
+
+`scalex-sample-poc-build.yaml`:
 ```yaml
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  generateName: sample-poc-release-build-
+  generateName: scalex-sample-poc-release-build-
   namespace: tower-ci
   labels:
     app.kubernetes.io/part-of: tekton-ci
-    scalex.io/child-name: sample-poc
+    scalex.io/child-name: scalex-sample-poc
 spec:
   pipelineRef:
     name: child-build
@@ -634,7 +643,7 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
   params:
     - name: child-name
-      value: sample-poc
+      value: scalex-sample-poc            # 등록된 release 이름 (base 이름 sample-poc 아님)
     - name: repo-url
       value: https://github.com/BellTigerLee/sample-poc.git
     - name: source-revision
@@ -655,7 +664,7 @@ spec:
 ```
 
 ```bash
-tkubectl -n tower-ci create -f sample-poc-build.yaml
+tkubectl -n tower-ci create -f scalex-sample-poc-build.yaml
 ```
 
 👀 관찰:
@@ -772,8 +781,85 @@ offboard 순서: `state: disabled` merge → member 잔여 확인 → `releases/
 ## 다음 배포 (2회차부터)
 
 ```text
-코드 수정 → chart/values.yaml의 images.app.tag 상승(v0.1.1) → push
-   → child-build PipelineRun (source-revision = 새 SHA)  → promote PR
+코드/차트 수정 → chart/values.yaml의 이미지 tag 전부 상승(예 v0.2.1→v0.2.2) → push
+   → child-build PipelineRun (child-name=scalex-sample-poc, source-revision=새 SHA) → promote PR
    → 사람이 merge → Argo가 새 digest로 sync
 ```
-`state`는 계속 `active`. S4/S5/S8은 반복하지 않는다.
+`state`는 계속 `active`. S4/S5/S8은 반복하지 않는다. **태그 상승은 필수**다 — 같은 버전
+재빌드는 불변 태그 가드에 막힌다(부록 A3). 이미지 집합 자체를 바꾸면 A2를 따른다.
+
+---
+
+## 부록 A. 실전 트러블슈팅 (이번 배포에서 실제로 걸린 것)
+
+worked example(sample-poc)은 단일 `app` beacon에서 **3-이미지 멀티클러스터 메트릭 파이프라인**
+(`metrics-collector`·`stats-analyzer`·`ring-store`)으로 진화했다. 시나리오 설계는
+[`sample-poc-multicluster-metrics-scenario.md`](sample-poc-multicluster-metrics-scenario.md).
+그 과정에서 실제로 부딪힌 오류와 해결을 증상→원인→해결로 정리한다.
+
+### A0. tower 접근은 `tkubectl` (context 아님)
+`kubectl --context tower ...`의 `tower` context는 이 환경에 없다. tower control plane은
+래퍼 `tkubectl`로 접근한다. member는 `kubectl --context <member>` 그대로.
+
+### A1. `release not enrolled: <base-name>`
+- **증상**: promote 단계에서 `release not enrolled: sample-poc`.
+- **원인**: PipelineRun `child-name`에 base 이름(`sample-poc`)을 줬다. promote는
+  `releases/<child-name>/release.yaml`을 찾는다.
+- **해결**: `child-name`을 등록된 release 이름 `scalex-sample-poc`로. (S6 상단 경고 참조.)
+  이미지 경로도 자동으로 `tower-ci/scalex-sample-poc/*`가 된다.
+
+### A2. `payload must replace the complete enrolled image set: expected app, got ...`
+- **증상**: 이미지 집합을 바꾼 뒤(예: `app` 1개 → `metrics-collector, stats-analyzer,
+  ring-store` 3개) promote 실패.
+- **원인**: promote는 태그/digest만 교체하고 **이미지 key 집합 변경은 자동 적용하지 않는다**
+  (안전장치). 등록된 `releases/scalex-sample-poc/values.yaml`의 key와 빌드 payload의 key가
+  같아야 한다.
+- **해결**: `values.yaml`은 **CI(promote)가 소유**한다(사람이 키를 손으로 심지 않는다). 이미지
+  집합이 바뀌면 그 파일을 **삭제**해 promote가 무에서 새로 시드하게 한다(v0.1.0 최초 생성과
+  같은 경로). release를 잠깐 `state: disabled`로 두면 Argo가 values 없는 release를 sync하지
+  않는다. 이미지 인벤토리의 진실은 child `chart/values.yaml`이다.
+
+### A3. `semantic tag already points to another artifact: ... (X != Y)`
+- **증상**: build-push에서 `v0.2.0`이 다른 digest를 가리킨다며 실패.
+- **원인**: `vX.Y.Z` semantic 태그는 **불변**이다. 같은 버전을 재빌드하면 BuildKit이 바이트
+  재현성이 없어 새 digest가 나오고, 가드가 릴리스된 태그를 다른 bits로 옮기길 거부한다.
+  immutable 태그 `sha-<40hex>`는 커밋마다 유일하므로 충돌하지 않는다.
+- **해결**: **버전을 올린다**(`chart/values.yaml`의 모든 이미지 `tag` 상승, 예 v0.2.1→v0.2.2).
+  override/force 파라미터는 **없다**(설계상 불변 전용). 같은 digest면 `already verified`로
+  자동 통과하므로, "같으면 덮어쓰기"는 재현 빌드일 때만 성립한다.
+
+### A4. validate-render `V2 [FAIL] ... selector가 렌더되지 않은 리소스를 가리킨다`
+- **증상**: helm-validate/validate-render에서 OverridePolicy가 dangling으로 판정
+  (`Deployment/scalex-sample-poc (ns=)`).
+- **원인**: policy `resourceSelectors`를 **labelSelector**로 썼다. 검증기는 selector를
+  **`name`으로만** 실제 렌더된 리소스에 매칭한다.
+- **해결**: policy resourceSelector는 워크로드를 **`name`으로 명시**한다(다른 정책들과 동일).
+  `targetCluster`가 적용 범위를 정하므로 대상 클러스터에 없는 워크로드를 name으로 나열해도
+  no-op이라 무해하다.
+
+### A5. LoadBalancer 서비스가 `<pending>`
+- **먼저**: tower(Karmada)는 LB status를 control plane으로 동기화하지 않는다. tower 뷰의
+  pending은 가짜일 수 있으니 **member에서 직접** 본다: `kubectl --context b -n <ns> get svc`.
+- **진짜 원인(이번 케이스)**: 요청한 특정 IP(`lbipam.cilium.io/ips: 10.33.142.20`)가 **이미
+  다른 서비스에 물려 있었다**(temp-poc가 .20/.21 선점). Cilium은 요청 IP가 사용 중이면 안 준다.
+  `kubectl --context b get svc -A -o wide | grep 10.33.142` 로 확인.
+- **해결**: b pool(`10.33.142.0/24`, `b-k8s/patches/cilium-lb-ipam/`)에서 **빈 IP**로 바꾼다.
+  b-k8s pool 정의·serviceSelector(`matchLabels: {}` = 전체)는 정상이므로 건드릴 필요 없다.
+  IP처럼 **배포 후 바뀌는 fleet 값**은 child가 아니라 `runtime-values.yaml`에 두면 재빌드 없이
+  Argo sync만으로 바꿀 수 있다(valueFiles 순서상 runtime-values가 child 기본값을 덮어씀).
+
+### A6. Karmada 정책 패턴 (이 child가 쓰는 것)
+- **사이트 주입**: 하나의 collector Deployment가 b·c로 spread될 때 파드는 자기 클러스터를
+  모른다. **OverridePolicy가 클러스터별 env를 주입**한다(`SITE_NAME=b`/`=c`,
+  `plaintext op:add path:/spec/template/spec/containers/0/env/-`). 인덱스 없는 `env/-` append라
+  안정적이다.
+- **노드 회피**: 특정 노드를 피하려면 `karmada.avoidNodes: [{cluster, hostnames:[...]}]` 값 →
+  OverridePolicy가 `targetCluster`의 사본에만 `nodeAffinity requiredDuringScheduling
+  kubernetes.io/hostname NotIn [...]`을 주입한다. **UID가 아니라 노드 이름/`kubernetes.io/hostname`
+  라벨로 매칭**한다(openark-kiss는 노드 이름이 하드웨어 UUID인 경우가 있다).
+
+### A7. 값을 child vs runtime-values 어디에 두나
+이 POC의 child `chart/values.yaml`은 이미 클러스터 이름(b/c placement, SITE_NAME)을 담은
+self-contained 형태다. 그래서 대부분의 값은 child에 둔다. 단 **배포 후 바뀌는 fleet 사실**
+(빈 LB IP 등)은 재빌드를 피하려면 `runtime-values.yaml` 오버라이드가 유리하다(A5). digest는
+언제나 promote가 `values.yaml`에 주입한다(사람이 만지지 않는다).
