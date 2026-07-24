@@ -7,6 +7,7 @@ spec:
   description: ScaleX User/Dev workloads reconciled into the Tower Karmada API.
   sourceRepos:
     - https://github.com/BellTigerLee/sample-poc.git
+    - https://github.com/mj006648/scalex-isaac-twinx.git
     - https://github.com/SJoon99/scalex-federation.git
   destinations:
     - name: karmada
