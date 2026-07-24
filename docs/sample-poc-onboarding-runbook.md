@@ -57,14 +57,14 @@ federation 로컬 경로 예시: `/home/work8/netai/dev/scalex-federation`
 
 ```bash
 # tower control plane 접근 (PipelineRun을 여기에 제출한다)
-kubectl --context tower get ns tower-ci
+tkubectl get ns tower-ci
 
 # Karmada에 member c가 등록되어 있는지 (placement 대상)
-kubectl --context tower -n karmada-system get clusters.cluster.karmada.io
+tkubectl -n karmada-system get clusters.cluster.karmada.io
 #   → 목록에 'c'가 Ready 로 보여야 한다
 
 # Harbor 빌더 자격증명과 GitHub App secret (bootstrap 경계)
-kubectl --context tower -n tower-ci get secret harbor-builder federation-promotion-github-app
+tkubectl -n tower-ci get secret harbor-builder federation-promotion-github-app
 ```
 
 🧑‍⚖️ **판단**: member `c`가 안 보이면, member 등록은 tower-k8s/`*-k8s` 경로의 별도 작업이다.
@@ -535,7 +535,7 @@ git rev-parse HEAD          # ← 이 40자 SHA를 기록한다.  (이하 <CHILD
 
 👀 push 직후 tower에서 PipelineRun이 **자동으로** 뜨는지 관찰(트리거 존재 여부 확인):
 ```bash
-kubectl --context tower -n tower-ci get pipelinerun --sort-by=.metadata.creationTimestamp
+tkubectl -n tower-ci get pipelinerun --sort-by=.metadata.creationTimestamp
 ```
 자동으로 뜨면 S6의 수동 제출은 건너뛰고 그 run을 관찰한다.
 
@@ -655,17 +655,17 @@ spec:
 ```
 
 ```bash
-kubectl --context tower -n tower-ci create -f sample-poc-build.yaml
+tkubectl -n tower-ci create -f sample-poc-build.yaml
 ```
 
 👀 관찰:
 ```bash
 # 전체 진행
-kubectl --context tower -n tower-ci get pipelinerun -w
+tkubectl -n tower-ci get pipelinerun -w
 # task 단위 (validate-input→clone→derive-targets→helm-validate→build-push→create-promotion-payload→promote)
-kubectl --context tower -n tower-ci get taskrun --sort-by=.metadata.creationTimestamp
+tkubectl -n tower-ci get taskrun --sort-by=.metadata.creationTimestamp
 # 특정 task 로그 (예: 파생 결과 확인)
-kubectl --context tower -n tower-ci logs -l tekton.dev/pipelineTask=derive-targets --tail=-1
+tkubectl -n tower-ci logs -l tekton.dev/pipelineTask=derive-targets --tail=-1
 ```
 
 기대 결과:
@@ -731,13 +731,13 @@ PR로 merge. ApplicationSet이 `federation-scalex-sample-poc` Application을 생
 
 ```bash
 # Argo가 release를 Application으로 잡았는가
-kubectl --context tower -n argo get applicationset scalex-federation-releases
-kubectl --context tower -n argo get application federation-scalex-sample-poc
+tkubectl -n argo get applicationset scalex-federation-releases
+tkubectl -n argo get application federation-scalex-sample-poc
 
 # Karmada가 워크로드를 받고 member c로 전파했는가
-kubectl --context tower -n scalex-sample-poc get deploy,propagationpolicy
-kubectl --context tower -n karmada-system get resourcebinding -n scalex-sample-poc 2>/dev/null || \
-  kubectl --context tower --kubeconfig <karmada-kubeconfig> -n scalex-sample-poc get rb
+tkubectl -n scalex-sample-poc get deploy,propagationpolicy
+tkubectl -n karmada-system get resourcebinding -n scalex-sample-poc 2>/dev/null || \
+  tkubectl --kubeconfig <karmada-kubeconfig> -n scalex-sample-poc get rb
 
 # 실제 member c 위의 pod
 kubectl --context c -n scalex-sample-poc get pods -o wide
