@@ -4,7 +4,7 @@ state: disabled
 disabledReason: First build and Karmada member verification pending.
 renderer: helm/v1
 source:
-  repoURL: https://github.com/BellTigerLee/sample-poc.git
+  repoURL: https://github.com/SmartX-Team/sandbox-scalex-mc-poc-app.git
   path: chart
   branch: main
 values:
