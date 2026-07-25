@@ -7,8 +7,8 @@ spec:
   description: ScaleX User/Dev workloads reconciled into the Tower Karmada API.
   sourceRepos:
     - https://github.com/SmartX-Team/sandbox-scalex-federation.git
-    - https://github.com/SmartX-Team/scalex-sandbox-sc-poc-app
-    - https://github.com/SmartX-Team/sandbox-scalex-mc-poc-app
+    - https://github.com/SmartX-Team/scalex-sandbox-sc-poc-app.git
+    - https://github.com/SmartX-Team/sandbox-scalex-mc-poc-app.git
   destinations:
     - name: karmada
       namespace: scalex-*
