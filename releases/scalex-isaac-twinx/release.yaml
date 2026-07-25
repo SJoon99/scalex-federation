@@ -1,6 +1,6 @@
 name: scalex-isaac-twinx
 namespace: scalex-isaac-twinx
-state: disabled
+state: active
 renderer: helm/v1
 source:
   repoURL: https://github.com/SmartX-Team/scalex-sandbox-sc-poc-app.git
