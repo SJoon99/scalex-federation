@@ -1,6 +1,6 @@
 name: scalex-sample-poc
 namespace: scalex-sample-poc
-state: disabled
+state: active
 disabledReason: First build and Karmada member verification pending.
 renderer: helm/v1
 source:
