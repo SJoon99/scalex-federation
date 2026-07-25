@@ -63,7 +63,7 @@ def load_mapping(path: Path):
 
 # --------------------------------------------------------------- ApplicationSet
 
-applicationset = load(ROOT / "argocd/applicationset.yaml")
+applicationset = load(ROOT / "applicationset.yaml")
 source = applicationset["spec"]["template"]["spec"]["sources"][0]
 check('dig "source" "revision"' in source["targetRevision"],
       "applicationset: source.revision 우선 규칙이 사라졌다")
@@ -83,7 +83,7 @@ check(selector.get("state") == "active",
 
 # --------------------------------------------------------------- release 순회
 
-appproject = load(ROOT / "argocd/appproject.yaml")
+appproject = load(ROOT / "appproject.yaml")
 allowed_kinds = {
     entry["kind"]
     for key in ("clusterResourceWhitelist", "namespaceResourceWhitelist")

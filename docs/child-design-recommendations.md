@@ -213,7 +213,7 @@ scalex-federation/scripts/validate-render.sh   ← 여기가 정본
 | V7 | `karmada.enabled=false` 렌더에서 policy가 0개다 |
 
 V6는 특히 가치가 크다 — Argo가 sync 시점에 거부하는 대신 **CI에서 미리 잡는다**.
-`argocd/appproject.yaml`을 읽어 대조하므로 whitelist가 바뀌면 자동으로 따라간다.
+`appproject.yaml`을 읽어 대조하므로 whitelist가 바뀌면 자동으로 따라간다.
 
 ### 변경 대상
 
@@ -330,7 +330,7 @@ registry에 다른 태그 규칙으로 push**하고 있다.
 
 ### P7-a. `sourceRepos`를 release에서 파생
 
-`argocd/appproject.yaml`의 `sourceRepos`를 손으로 유지하는 대신
+`appproject.yaml`의 `sourceRepos`를 손으로 유지하는 대신
 `releases/*/release.yaml`의 `source.repoURL` 합집합 + Federation 자기 자신으로 생성한다.
 
 두 가지 구현안:
@@ -396,7 +396,7 @@ GitLab·사설 Git·private repository를 막는다. workspace의 `smurf-child`�
 
 현재 child 계약 문서가 `temp-poc/docs/` 안에 있다. 계약의 소유자는 Federation이므로
 `scalex-federation/docs/`가 정본이어야 한다. 또한 기존 문서가 실재하지 않는 경로
-`scalex-federation/bootstrap/appproject.yaml`을 참조하고 있다 (실제는 `argocd/`).
+`scalex-federation/bootstrap/appproject.yaml`을 참조하고 있다 (실제는 repository root).
 
 ### 조치
 

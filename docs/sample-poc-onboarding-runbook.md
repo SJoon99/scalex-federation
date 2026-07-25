@@ -543,7 +543,7 @@ tkubectl -n tower-ci get pipelinerun --sort-by=.metadata.creationTimestamp
 
 ## S4. Federation PR① — source 허용
 
-`scalex-federation/argocd/appproject.yaml`의 `spec.sourceRepos`에 정확한 URL을 추가한다.
+`scalex-federation/appproject.yaml`의 `spec.sourceRepos`에 정확한 URL을 추가한다.
 
 ```yaml
 spec:

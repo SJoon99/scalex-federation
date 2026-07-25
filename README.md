@@ -44,7 +44,8 @@ artifact revision에서 원자적으로 검증된다. 사람이 관리하는 run
 ## 구조
 
 ```text
-argocd/                                     # Tower Argo CD 진입점
+applicationset.yaml                         # 활성 release별 Argo Application 생성
+appproject.yaml                             # source, destination, resource 허용 경계
 docs/                                       # 소유권·승격·실행 계약
 releases/                                   # 기능 repo 단위 release
 ├─ scalex-feature-poc/
@@ -55,16 +56,17 @@ releases/                                   # 기능 repo 단위 release
    ├─ release.yaml
    ├─ runtime-values.yaml
    └─ values.yaml
+tests/                                      # release와 Argo contract 검증
 ```
 
 단일 거대 values 파일과 달리 release 변경·rollback·CODEOWNERS 범위를 독립적으로 유지한다.
-자세한 비교는 [`docs/structure-variant.md`](docs/structure-variant.md)를 참고한다.
 
 ## 현재 release 상태
 
-`releases/` 바로 아래에 기능 repo 이름과 동일한 release 디렉터리 11개가 존재한다.
-`poc` 같은 환경 중간 계층은 사용하지 않는다. 각 디렉터리명, `release.yaml`의 `name`,
-`namespace`, `source.repoURL`은 같은 기능 repo 식별자를 따른다.
+`releases/` 바로 아래에 기능 repo 이름과 동일한 release 디렉터리를 둔다. `poc` 같은
+환경 중간 계층은 사용하지 않는다. 각 release의 배포 여부는 `release.yaml`의
+`state: active|disabled`로 관리한다.
 
-`temp-poc`은 latest promoted successful chart SHA를 추적해 `state: active`로 운영하며, 나머지 10개는
-전용 repo와 chart가 준비된 후 full SHA와 values를 채워 개별적으로 활성화한다.
+Tower Argo는 repository root를 읽어 `appproject.yaml`과 `applicationset.yaml`을 적용한다.
+ApplicationSet은 `releases/*/release.yaml`을 검색하고 활성 release의 feature chart와
+release별 values를 Karmada destination에 동기화한다.

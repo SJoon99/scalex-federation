@@ -25,7 +25,7 @@ values 키 이름 · PipelineRun JSON · Federation values에 **다섯 번 중�
 | `eecs-k8s/apps/tekton-ci/templates/*.tpl` | child 이름·이미지 이름이 전혀 없다. 5개 param(`child-name`, `repo-url`, `source-revision`, `chart-path`, `build-targets`)으로 완전 파라미터화 |
 | `tower-k8s/patches/tekton-ci/values.yaml` | registry/promotion 설정만. `temp-poc` 문자열 없음 |
 | image 경로 공식 | `${host}/${prefix}/${child-name}/${image}` — child 수에 무관 |
-| `argocd/applicationset.yaml` | `releases/*/release.yaml` glob. release 추가는 파일 추가로 끝 |
+| `applicationset.yaml` | `releases/*/release.yaml` glob. release 추가는 파일 추가로 끝 |
 | `temp-poc/scripts/build-images.sh` | `chart/values.yaml`의 `images` map을 정렬 순회. 컴포넌트 수에 무관하게 동작 |
 
 `temp-poc`라는 문자열이 `eecs-k8s`/`tower-k8s`에 등장하는 곳은 예시 template 1개
@@ -134,8 +134,8 @@ member cluster 이름(`b`, `c`)과 Cilium LB IP는 **Federation/Infra의 사실*
 
 ### F6. child 하나 등록에 공유 파일 3곳을 건드린다
 
-- `argocd/appproject.yaml` `sourceRepos` — 화이트리스트, 와일드카드 없음 (현재 12개)
-- `argocd/appproject.yaml` `namespaceResourceWhitelist` — 폐쇄된 14 kind. `Ingress`,
+- `appproject.yaml` `sourceRepos` — 화이트리스트, 와일드카드 없음 (현재 12개)
+- `appproject.yaml` `namespaceResourceWhitelist` — 폐쇄된 14 kind. `Ingress`,
   `Secret`, `PVC`, `NetworkPolicy` 없음
 - `releases/<id>/` 3파일
 
@@ -184,7 +184,7 @@ child를 지워도 Harbor repository는 Git 어디에도 흔적이 없어 **수�
 ### F11. 문서 표류
 
 - `temp-poc/docs/*.md`가 `scalex-federation/bootstrap/appproject.yaml`을 참조하지만 실제
-  경로는 `argocd/appproject.yaml`이다. `bootstrap/` 디렉터리는 존재하지 않는다.
+  경로는 `appproject.yaml`이다. `bootstrap/` 디렉터리는 존재하지 않는다.
 - `scalex-federation/docs/`의 기존 문서 5개가 uncommitted 상태로 삭제되어 있다.
 - child 계약 문서가 **child repository(temp-poc) 안에** 있다. 계약의 소유자는 Federation인데
   참조 구현이 문서를 들고 있어, temp-poc를 지우면 계약도 사라진다.

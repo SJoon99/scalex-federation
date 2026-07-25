@@ -35,7 +35,7 @@
 | **b = 데이터 사이트**: Ceph RGW S3가 `10.33.142.10`에 고정, Cilium LB 풀 `10.33.142.0/24` | `b-k8s/patches/rook-ceph-rgw/values.yaml`, `b-k8s/patches/cilium-lb-ipam/values.yaml` |
 | **c = 연산 사이트**: `nvidia.com/gpu`·`isaac-saas`·`nucleus`, Cilium LB 풀 `10.33.143.0/24` | `c-k8s/values.yaml`, `c-k8s/patches/cilium-lb-ipam/values.yaml` |
 | 두 클러스터 모두 `scalex-sample-poc` 네임스페이스를 인프라로 선언(자동 전파 opt-out) | `b-k8s`/`c-k8s` `patches/workload-namespace/values.yaml` |
-| AppProject가 `OverridePolicy`·`ConfigMap`·`Service`·`Deployment`·`PVC` 등을 이미 허용 | `scalex-federation/argocd/appproject.yaml` (T6 확장) |
+| AppProject가 `OverridePolicy`·`ConfigMap`·`Service`·`Deployment`·`PVC` 등을 이미 허용 | `scalex-federation/appproject.yaml` (T6 확장) |
 
 **없는 것(경계)**: karmada-scheduler-estimator(→ `dynamicWeight: AvailableReplicas` 불가),
 descheduler, karmada-search, submariner 등 클러스터 간 오버레이 네트워킹. 앱 레벨 통신은
