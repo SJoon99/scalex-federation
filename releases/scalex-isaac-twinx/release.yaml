@@ -10,7 +10,7 @@ values:
   path: releases/scalex-isaac-twinx/values.yaml
 promotion:
   mode: tracking
-  resolvedRevision: b743693e111ff1006892c3d00f5d6424fc21e0f7
+  resolvedRevision: 403567d8761eb69c50ca3bacdb3a1eced439f8c9
 requiredKinds:
   - ClusterRole
   - ClusterRoleBinding
