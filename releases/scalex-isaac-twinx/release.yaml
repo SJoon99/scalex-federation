@@ -1,6 +1,6 @@
 name: scalex-isaac-twinx
 namespace: scalex-isaac-twinx
-state: disabled
+state: active
 renderer: helm/v1
 source:
   repoURL: https://github.com/mj006648/scalex-isaac-twinx.git
