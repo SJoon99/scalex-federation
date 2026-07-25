@@ -3,5 +3,5 @@ images:
     repository: 10.34.25.18/tower-ci/scalex-isaac-twinx/portal
     tag: v0.0.1
     pullPolicy: IfNotPresent
-    digest: sha256:a67a474c47aeced72991dd045b4cd56ad92d95a7712ccb6cf057fc14cd99145a
+    digest: sha256:5f1b08e9e1b7c108a4b8a5514f80332d7cf70fe8dbc7a8e917a3b2f5e8a51038
     sourceRevision: 403567d8761eb69c50ca3bacdb3a1eced439f8c9
