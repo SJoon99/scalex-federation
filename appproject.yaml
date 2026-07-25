@@ -8,7 +8,7 @@ spec:
   sourceRepos:
     - https://github.com/SmartX-Team/sandbox-scalex-federation.git
     - https://github.com/SmartX-Team/scalex-sandbox-sc-poc-app.git
-    - https://github.com/SmartX-Team/sandbox-scalex-mc-poc-app.git
+    - https://github.com/SmartX-Team/scalex-sandbox-mc-poc-app.git
   destinations:
     - name: karmada
       namespace: scalex-*
