@@ -11,4 +11,4 @@ values:
   path: releases/scalex-sample-poc/values.yaml
 promotion:
   mode: tracking
-  resolvedRevision: 77b9d142f7d2a24d6a4f4c7f26f6d3b6fc7aca4f
+  resolvedRevision: a207a3fa5778262a2d0512f051af8d3bf3429366
