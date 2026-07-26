@@ -9,7 +9,7 @@ spec:
     - missingkey=error
   generators:
     - git:
-        repoURL: https://github.com/SmartX-Team/sandbox-scalex-federation.git
+        repoURL: https://github.com/SmartX-Team/scalex-sandbox-federation.git
         revision: main
         files:
           - path: releases/*/release.yaml
@@ -34,7 +34,7 @@ spec:
             valueFiles:
               - '$federation/releases/{{ .name }}/runtime-values.yaml'
               - '$federation/{{ .values.path }}'
-        - repoURL: https://github.com/SmartX-Team/sandbox-scalex-federation.git
+        - repoURL: https://github.com/SmartX-Team/scalex-sandbox-federation.git
           targetRevision: main
           ref: federation
       destination:
