@@ -12,6 +12,8 @@ spec:
   destinations:
     - name: karmada
       namespace: scalex-*
+    - name: scalex
+      namespace: scalex-*
   # cluster-scoped 허용 목록.
   # 여기의 kind는 release.yaml의 requiredKinds가 요구해서 열린 것이어야 한다.
   # 아무 release도 요구하지 않는 항목은 tests/test_promotion_contract.py가 WARN으로 보고한다.
