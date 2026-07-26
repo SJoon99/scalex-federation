@@ -1,6 +1,6 @@
 name: scalex-sample-poc
 namespace: scalex-sample-poc
-state: active
+state: diabled
 disabledReason: First build and Karmada member verification pending.
 renderer: helm/v1
 source:
@@ -11,4 +11,4 @@ values:
   path: releases/scalex-sample-poc/values.yaml
 promotion:
   mode: tracking # sha는 CI-managed됨.
-  resolvedRevision: 83b518a1ce81e42f9d99d6a443ccf1b36d064e03
+  # resolvedRevision: 83b518a1ce81e42f9d99d6a443ccf1b36d064e03
