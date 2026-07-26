@@ -10,8 +10,6 @@ spec:
     - https://github.com/SmartX-Team/scalex-sandbox-sc-poc-app.git
     - https://github.com/SmartX-Team/scalex-sandbox-mc-poc-app.git
   destinations:
-    - name: karmada
-      namespace: scalex-*
     - name: scalex
       namespace: scalex-*
   # cluster-scoped 허용 목록.

@@ -80,10 +80,17 @@ check(source["helm"]["valueFiles"] == [
 selector = applicationset["spec"]["generators"][0]["selector"]["matchLabels"]
 check(selector.get("state") == "active",
       "applicationset: state=active selector가 사라졌다")
+destination = applicationset["spec"]["template"]["spec"]["destination"]
+check(destination.get("name") == "scalex",
+      "applicationset: workload destination은 scalex여야 한다")
 
 # --------------------------------------------------------------- release 순회
 
 appproject = load(ROOT / "appproject.yaml")
+check(appproject["spec"].get("destinations") == [
+          {"name": "scalex", "namespace": "scalex-*"},
+      ],
+      "appproject: scalex destination과 scalex-* namespace만 허용해야 한다")
 allowed_kinds = {
     entry["kind"]
     for key in ("clusterResourceWhitelist", "namespaceResourceWhitelist")

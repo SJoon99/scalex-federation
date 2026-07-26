@@ -38,7 +38,7 @@ spec:
           targetRevision: main
           ref: federation
       destination:
-        name: karmada
+        name: scalex
         namespace: '{{ .namespace }}'
       syncPolicy:
         automated:
