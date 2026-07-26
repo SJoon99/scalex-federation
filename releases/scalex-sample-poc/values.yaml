@@ -1,19 +1,19 @@
 images:
   metrics-collector:
     repository: 10.34.25.18/tower-ci/scalex-sample-poc/metrics-collector
-    tag: v0.2.3
+    tag: v0.2.4
     pullPolicy: IfNotPresent
-    digest: sha256:7c234510c51c6ab4a2f6439f256a77b98fbc2f21fc1daf94068e0987db4dbd49
-    sourceRevision: 83b518a1ce81e42f9d99d6a443ccf1b36d064e03
+    digest: sha256:9140cc86415c763ae9f5fd1202a52c7d165a9f9d8e7dd161d2e8f5492cc01661
+    sourceRevision: 110b2439508f37562b17643987f777a1cb03c62c
   ring-store:
     repository: 10.34.25.18/tower-ci/scalex-sample-poc/ring-store
-    tag: v0.2.3
+    tag: v0.2.4
     pullPolicy: IfNotPresent
-    digest: sha256:621ca01bd0ddf1f8b566d2b8afcc339ee0e2fbc916347d33d7cddcc920261200
-    sourceRevision: 83b518a1ce81e42f9d99d6a443ccf1b36d064e03
+    digest: sha256:5f3057c9c99e4b31efaf54267de8666d659fbf3fdff546763ad79c39d0d85965
+    sourceRevision: 110b2439508f37562b17643987f777a1cb03c62c
   stats-analyzer:
     repository: 10.34.25.18/tower-ci/scalex-sample-poc/stats-analyzer
-    tag: v0.2.3
+    tag: v0.2.4
     pullPolicy: IfNotPresent
-    digest: sha256:a5dd2c5c64147a543081bbca5dc8fb920346805f0c9c517d3a2a8866fc5c46e0
-    sourceRevision: 83b518a1ce81e42f9d99d6a443ccf1b36d064e03
+    digest: sha256:a6b54422a4279c8410b3634e3c4e0286f0b3276fbeb64c936f7be0a9fc58fe16
+    sourceRevision: 110b2439508f37562b17643987f777a1cb03c62c

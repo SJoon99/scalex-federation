@@ -12,3 +12,5 @@ values:
 promotion:
   mode: tracking # sha는 CI-managed됨.
   # resolvedRevision: 83b518a1ce81e42f9d99d6a443ccf1b36d064e03
+
+  resolvedRevision: 110b2439508f37562b17643987f777a1cb03c62c
