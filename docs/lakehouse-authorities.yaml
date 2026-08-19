@@ -23,7 +23,7 @@ sites:
     role: source-authority
     capacityIntent: 10TB
     authorityRepo: https://github.com/SJoon99/b-k8s.git
-    authorityRevision: e8c40395ca9e5f37fa1029115e8b6d0c70905b00
+    authorityRevision: 086238024813b7dce505844f562fb8cbec051cac
     catalog:
       type: nessie
       reference: main
@@ -35,7 +35,7 @@ sites:
     role: source-authority
     capacityIntent: 10TB
     authorityRepo: https://github.com/SJoon99/c-k8s.git
-    authorityRevision: 003f38de2129b7e975d310077e5491a2f3fd489d
+    authorityRevision: f4956ca2b10ed2e55730ef2a1df9c7cbbcceca55
     catalog:
       type: nessie
       reference: main
