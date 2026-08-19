@@ -12,6 +12,7 @@ ScaleX 기능의 **배포 승인 목록**을 관리하는 GitOps repository다. 
 - 기능 chart에 전달할 최소 배포 values 선택
 - release 활성화·비활성화 및 Git 기반 승격/rollback
 - Tower Argo의 AppProject/ApplicationSet 선언
+- DataFederation 설계용 non-secret site authority pointer 기록
 
 ## 책임지지 않는 것
 
@@ -47,6 +48,7 @@ artifact revision에서 원자적으로 검증된다. 사람이 관리하는 run
 applicationset.yaml                         # 활성 release별 Argo Application 생성
 appproject.yaml                             # source, destination, resource 허용 경계
 docs/                                       # 소유권·승격·실행 계약
+└─ lakehouse-authorities.yaml               # reference-only Iceberg authority inventory
 releases/                                   # 기능 repo 단위 release
 ├─ scalex-feature-poc/
 │  ├─ release.yaml                          # Git descriptor: repo/SHA, namespace, state

@@ -1,0 +1,45 @@
+inventoryVersion: 1
+purpose: datafederation-discovery-input
+runtimeBinding: false
+liveReadinessVerified: false
+durability:
+  cephReplicaSize: 1
+  class: lab-no-redundancy
+  warning: single-device-failure-can-cause-data-loss
+sites:
+  - name: site-a
+    role: processing-target
+    capacityIntent: 100TB
+    authorityRepo: https://github.com/SJoon99/SandBox-Infra.git
+    authorityRevision: c5ea0f0b96c51b708a2e35d13b379df5d31b99a5
+    catalog:
+      type: nessie
+      reference: main
+    objectStorage:
+      bucket: lakehouse
+      warehouse: s3://lakehouse/warehouse
+    readiness: gitops-prepared-not-live-verified
+  - name: site-b
+    role: source-authority
+    capacityIntent: 10TB
+    authorityRepo: https://github.com/SJoon99/b-k8s.git
+    authorityRevision: e8c40395ca9e5f37fa1029115e8b6d0c70905b00
+    catalog:
+      type: nessie
+      reference: main
+    objectStorage:
+      bucket: scalex-site-b-lakehouse
+      warehouse: s3://scalex-site-b-lakehouse/warehouse/site-b/iceberg
+    readiness: gitops-prepared-not-live-verified
+  - name: site-c
+    role: source-authority
+    capacityIntent: 10TB
+    authorityRepo: https://github.com/SJoon99/c-k8s.git
+    authorityRevision: 003f38de2129b7e975d310077e5491a2f3fd489d
+    catalog:
+      type: nessie
+      reference: main
+    objectStorage:
+      bucket: site-c-iceberg-warehouse
+      warehouse: s3://site-c-iceberg-warehouse/warehouse/site-c/iceberg
+    readiness: gitops-prepared-not-live-verified
